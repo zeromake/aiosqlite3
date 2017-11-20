@@ -27,7 +27,7 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 setup(
-    name='aiofiles',
+    name='aiosqlite3',
     version=find_version('aiosqlite3', '__init__.py'),
     packages=find_packages(),
     url='https://github.com/zeromake/aiosqlite3',
@@ -38,11 +38,8 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3.3",
-        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Topic :: System :: Filesystems",
-    ],
-    extras_require={
-        ':python_version == "3.3"': ['asyncio']
-    }
+    ]
 )
