@@ -1,0 +1,42 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "badab11cfdbf7509691415ea25b5467b35007afa3ca0e4c8981b0499ec75d9d7"
+        },
+        "host-environment-markers": {
+            "implementation_name": "cpython",
+            "implementation_version": "3.6.3",
+            "os_name": "posix",
+            "platform_machine": "x86_64",
+            "platform_python_implementation": "CPython",
+            "platform_release": "4.13.14-2-MANJARO",
+            "platform_system": "Linux",
+            "platform_version": "#1 SMP PREEMPT Sat Nov 18 14:25:40 UTC 2017",
+            "python_full_version": "3.6.3",
+            "python_version": "3.6",
+            "sys_platform": "linux"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.6"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.doubanio.com/simple/",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {},
+    "develop": {
+        "py": {
+            "hashes": [],
+            "version": "==1.5.2"
+        },
+        "pytest": {
+            "hashes": [],
+            "version": "==3.2.5"
+        }
+    }
+}
