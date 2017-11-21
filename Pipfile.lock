@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "badab11cfdbf7509691415ea25b5467b35007afa3ca0e4c8981b0499ec75d9d7"
+            "sha256": "2503b118191e2742a7b420e5d46af474995029b4a176eab39ecfb6bbf4c8487b"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -28,7 +28,32 @@
             }
         ]
     },
-    "default": {},
+    "default": {
+        "coverage": {
+            "hashes": [],
+            "version": "==4.4.2"
+        },
+        "py": {
+            "hashes": [],
+            "version": "==1.5.2"
+        },
+        "pytest": {
+            "hashes": [],
+            "version": "==3.2.5"
+        },
+        "pytest-cov": {
+            "hashes": [],
+            "version": "==2.5.1"
+        },
+        "pytest-sugar": {
+            "hashes": [],
+            "version": "==0.9.0"
+        },
+        "termcolor": {
+            "hashes": [],
+            "version": "==1.1.0"
+        }
+    },
     "develop": {
         "py": {
             "hashes": [],

@@ -1,30 +1,38 @@
+import sys, os
+sys.path.append((os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))))
+
 import asyncio
-import pytest
 import gc
-import aiosqlite3
 import logging
+
+import aiosqlite3
+import pytest
 
 logging.basicConfig(
     level=logging.DEBUG
 )
 
-
 @pytest.fixture(scope='session')
-def loop():
-    """
-    生成loop
-    """
+def event_loop():
     loop_obj = asyncio.new_event_loop()
     yield loop_obj
     gc.collect()
     loop_obj.close()
 
+@pytest.fixture(scope='session')
+def loop(event_loop):
+    """
+    生成loop
+    """
+    return event_loop
+
 @pytest.fixture
-async def conn(loop):
+async def conn(loop, connection_maker):
     """
     生成一个连接
     """
-    pass
+    connection = await connection_maker()
+    yield connection
 
 @pytest.fixture
 async def connection_maker(loop):
