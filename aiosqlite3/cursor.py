@@ -6,12 +6,10 @@ import asyncio
 from .log import logger
 from .utils import delegate_to_executor, proxy_property_directly
 
+
 @delegate_to_executor(
     '_cursor',
     (
-        'execute',
-        'executemany',
-        'executescript',
         'fetchone',
         'fetchmany',
         'fetchall',
@@ -38,11 +36,12 @@ class Cursor:
         self._echo = echo
         self._executor = None
 
-    async def _execute(self, fn, *args, **kwargs):
+    @asyncio.coroutine
+    def _execute(self, fn, *args, **kwargs):
         """
         Execute the given function on the shared connection's thread.
         """
-        res = await self._conn._execute(fn, *args, **kwargs)
+        res = yield from self._conn._execute(fn, *args, **kwargs)
         return res
 
     @property
@@ -52,3 +51,38 @@ class Cursor:
     @arraysize.setter
     def arraysize(self, value):
         self._cursor.arraysize = value
+
+    @asyncio.coroutine
+    def execute(self, sql, parameters=[]):
+        """
+        执行sql语句
+        """
+        if self._echo:
+            logger.info(
+                'cursor.execute->\n  sql: %s\n  args: %s',
+                sql,
+                str(parameters)
+            )
+        yield from self._execute(self._cursor.execute, sql, parameters)
+
+    @asyncio.coroutine
+    def executemany(self, sql, parameters):
+        """
+        批量执行sql语句
+        """
+        if self._echo:
+            logger.info(
+                'cursor.executemany->\n  sql: %s\n  args: %s',
+                sql,
+                str(parameters)
+            )
+        yield from self._execute(self._cursor.executemany, sql, parameters)
+
+    @asyncio.coroutine
+    def executescript(self, sql_script):
+        """
+        执行sql脚本文本
+        """
+        if self._echo:
+            logger.info('cursor.executescript->\n  sql_script: %s', sql_script)
+        yield from self._execute(self._cursor.executescript, sql_script)

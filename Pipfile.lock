@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "35c4d91199372ea5c0efa8dfdc5579304c2888f021f2b7ac0b379e73971fab0c"
+            "sha256": "badab11cfdbf7509691415ea25b5467b35007afa3ca0e4c8981b0499ec75d9d7"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -37,10 +37,6 @@
         "pytest": {
             "hashes": [],
             "version": "==3.2.5"
-        },
-        "uvloop": {
-            "hashes": [],
-            "version": "==0.8.1"
         }
     }
 }

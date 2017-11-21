@@ -5,6 +5,7 @@ pool
 import asyncio
 import collections
 
+
 def create_pool(
         database=None,
         minsize=1,
@@ -13,7 +14,7 @@ def create_pool(
         pool_recycle=-1,
         loop=None,
         **kwargs
-    ):
+):
     coro = _create_pool(
         database=database,
         minsize=minsize,
@@ -33,7 +34,7 @@ async def _create_pool(
         pool_recycle=-1,
         loop=None,
         **kwargs
-    ):
+):
     if loop is None:
         loop = asyncio.get_event_loop()
     pool = Pool(
@@ -65,7 +66,7 @@ class Pool(asyncio.AbstractServer):
             pool_recycle,
             loop,
             **kwargs
-        ):
+    ):
         if minsize < 0:
             raise ValueError("minsize should be zero or greater")
         if maxsize < minsize:

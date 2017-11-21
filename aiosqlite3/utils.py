@@ -1,19 +1,27 @@
+"""
+代理方法工具
+"""
 
 import asyncio
-import functools
 import sys
 from collections.abc import Coroutine
 
 PY_35 = sys.version_info >= (3, 5)
 
+if PY_35:
+    from collections.abc import Coroutine
+    base = Coroutine
+else:
+    base = object
 
-class _ContextManager(Coroutine):
+
+class _ContextManager(base):
     __slots__ = ('_coro', '_obj')
 
     def __init__(self, coro):
         self._coro = coro
         self._obj = None
-    
+
     def send(self, value):
         return self._coro.send(value)
 
@@ -24,10 +32,10 @@ class _ContextManager(Coroutine):
             return self._coro.throw(typ, val)
         else:
             return self._coro.throw(typ, val, tb)
-    
+
     def close(self):
         return self._coro.close()
-    
+
     @property
     def gi_frame(self):
         return self._coro.gi_frame
@@ -43,17 +51,25 @@ class _ContextManager(Coroutine):
     def __next__(self):
         return self.send(None)
 
-    def __await__(self):
-        resp = self._coro.__await__()
+    @asyncio.coroutine
+    def __iter__(self):
+        resp = yield from self._coro
         return resp
 
-    async def __aenter__(self):
-        self._obj = await self._coro
-        return self._obj
+    if PY_35:
+        def __await__(self):
+            resp = yield from self._coro
+            return resp
 
-    async def __aexit__(self, exc_type, exc, tb):
-        await self._obj.close()
-        self._obj = None
+        @asyncio.coroutine
+        def __aenter__(self):
+            self._obj = yield from self._coro
+            return self._obj
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            yield from self._obj.close()
+            self._obj = None
 
 
 def delegate_to_executor(bind_attr, attrs):
@@ -67,7 +83,11 @@ def delegate_to_executor(bind_attr, attrs):
         添加到类
         """
         for attr_name in attrs:
-            setattr(cls, attr_name, _make_delegate_method(bind_attr, attr_name))
+            setattr(
+                cls,
+                attr_name,
+                _make_delegate_method(bind_attr, attr_name)
+            )
         return cls
     return cls_builder
 
@@ -102,10 +122,12 @@ def proxy_property_directly(bind_attr, attrs):
 
 
 def _make_delegate_method(bind_attr, attr_name):
-    async def method(self, *args, **kwargs):
+    @asyncio.coroutine
+    def method(self, *args, **kwargs):
         bind = getattr(self, bind_attr)
         func = getattr(bind, attr_name)
-        return await self._execute(func, *args, **kwargs)
+        res = yield from self._execute(func, *args, **kwargs)
+        return res
     return method
 
 
@@ -121,4 +143,3 @@ def _make_proxy_property(bind_attr, attr_name):
         bind = getattr(self, bind_attr)
         return getattr(bind, attr_name)
     return property(proxy_property)
-
