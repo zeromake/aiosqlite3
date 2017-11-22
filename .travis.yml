@@ -7,7 +7,6 @@ python:
 install:
     - pip install pipenv -i https://pypi.doubanio.com/simple/
     - pipenv install -d
-    - pipenv shell
 
 script:
     - make test
