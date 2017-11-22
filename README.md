@@ -1,4 +1,6 @@
 #aiosqlite3
+![https://www.travis-ci.org/zeromake/aiosqlite3](https://www.travis-ci.org/zeromake/aiosqlite3.svg?branch=master)
+
 
 ## Basic Example
 
