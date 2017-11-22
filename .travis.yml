@@ -6,8 +6,6 @@ python:
 
 install:
     - pip install pipenv -i https://pypi.doubanio.com/simple/
-    - pipenv --three
-    - sed -i s/pypi.python.org/pypi.doubanio.com/g Pipfile
     - pipenv install -d
     - pipenv shell
 
