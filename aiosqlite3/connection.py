@@ -47,6 +47,7 @@ class Connection:
             timeout=5,
             echo=False,
             check_same_thread=False,
+            isolation_level='',
             **kwargs
     ):
         if check_same_thread:
@@ -60,20 +61,28 @@ class Connection:
         self._executor = executor
         self._echo = echo
         self._timeout = timeout
-        self._conn = None
+        self._isolation_level = isolation_level
         self._check_same_thread = check_same_thread
+        self._conn = None
 
     def _execute(self, func, *args, **kwargs):
+        """
+        把同步转为async运行
+        """
         func = partial(func, *args, **kwargs)
         future = self._loop.run_in_executor(self._executor, func)
         return future
 
     @asyncio.coroutine
     def _connect(self):
+        """
+        async连接，必须使用多线程模式
+        """
         func = self._execute(
             sqlite3.connect,
             self._database,
             timeout=self._timeout,
+            isolation_level=self._isolation_level,
             check_same_thread=self._check_same_thread,
             **self._kwargs
         )
@@ -83,20 +92,39 @@ class Connection:
 
     @property
     def loop(self):
+        """
+        连接使用的loop
+        """
         return self._loop
 
     @property
     def timeout(self):
+        """
+        超时时间
+        """
         return self._timeout
 
     @property
     def closed(self):
+        """
+        是否已关闭连接
+        """
         if self._conn:
             return False
         return True
 
     @property
-    def isolation_level(self) -> str:
+    def autocommit(self):
+        """
+        是否为自动commit
+        """
+        return self._conn.isolation_level is None
+
+    @property
+    def isolation_level(self):
+        """
+        智能,自动commit
+        """
         return self._conn.isolation_level
 
     @isolation_level.setter
@@ -137,6 +165,9 @@ class Connection:
 
     @asyncio.coroutine
     def close(self):
+        """
+        关闭
+        """
         if not self._conn:
             return
         res = yield from self._execute(self._conn.close)
@@ -149,7 +180,7 @@ class Connection:
     def execute(
             self,
             sql,
-            parameters=[],
+            parameters=None,
     ):
         """
         Helper to create a cursor and execute the given query.
@@ -160,6 +191,8 @@ class Connection:
                 sql,
                 str(parameters)
             )
+        if parameters is None:
+            parameters = []
         cursor = yield from self._execute(self._conn.execute, sql, parameters)
         return _ContextManager(self._cursor(cursor))
 
@@ -211,6 +244,7 @@ def connect(
         executor: concurrent.futures.Executor=None,
         timeout: int = 5,
         echo: bool = False,
+        isolation_level='',
         check_same_thread: bool = False,
         **kwargs: dict
 ):
@@ -223,6 +257,7 @@ def connect(
         executor=executor,
         timeout=timeout,
         echo=echo,
+        isolation_level=isolation_level,
         check_same_thread=check_same_thread,
         **kwargs
     )
@@ -236,6 +271,7 @@ def _connect(
         executor: concurrent.futures.Executor=None,
         timeout: int = 5,
         echo: bool = False,
+        isolation_level='',
         check_same_thread: bool = False,
         **kwargs: dict
 ):
@@ -250,6 +286,7 @@ def _connect(
         executor=executor,
         timeout=timeout,
         echo=echo,
+        isolation_level=isolation_level,
         check_same_thread=check_same_thread,
         **kwargs
     )

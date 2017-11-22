@@ -1,12 +1,12 @@
 import sys, os
-sys.path.append((os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))))
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import asyncio
 import gc
 import logging
 
 import aiosqlite3
 import pytest
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(
     level=logging.DEBUG
@@ -27,24 +27,46 @@ def loop(event_loop):
     return event_loop
 
 @pytest.fixture
-async def conn(loop, connection_maker):
+def conn(loop, db):
     """
     生成一个连接
     """
-    connection = await connection_maker()
+    coro = aiosqlite3.connect(database=db, echo=True)
+    connection = loop.run_until_complete(coro)
     yield connection
+    loop.run_until_complete(connection.close())
 
 @pytest.fixture
-async def connection_maker(loop):
-    """
-    代理生成连接，并回收
-    """
-    cleanup = []
+def db():
+    return ':memory:'
 
-    async def make():
-        conn_obj = await aiosqlite3.connect(':memory:', echo=True)
-        cleanup.append(conn_obj)
-        return conn_obj
+@pytest.fixture
+def executor():
+    executor = ThreadPoolExecutor(max_workers=1)
+    yield executor
+    executor.shutdown()
+
+@pytest.fixture
+@asyncio.coroutine
+def pool(loop, db):
+    pool = yield from aiosqlite3.create_pool(loop=loop, database=db)
+    yield pool
+
+    pool.close()
+    yield from pool.wait_closed()
+
+@pytest.fixture
+@asyncio.coroutine
+def pool_maker(loop):
+    pool_list = []
+
+    def make(loop, **kw):
+        pool = yield from aiosqlite3.create_pool(loop=loop, **kw)
+        pool_list.append(pool)
+        return pool
+
     yield make
-    for conn_obj in cleanup:
-        await conn_obj.close()
+
+    for pool in pool_list:
+        pool.close()
+        yield from pool.wait_closed()

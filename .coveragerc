@@ -1,0 +1,4 @@
+[run]
+branch = True
+source = aiosqlite3, tests
+omit = site-packages, .tox

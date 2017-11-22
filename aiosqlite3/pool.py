@@ -4,34 +4,39 @@ pool
 
 import asyncio
 import collections
+from .connection import connect
+from .utils import _PoolContextManager, _PoolAcquireContextManager, PY_35
+from .log import logger
 
 
 def create_pool(
-        database=None,
+        database,
         minsize=1,
         maxsize=10,
         echo=False,
-        pool_recycle=-1,
         loop=None,
         **kwargs
 ):
+    """
+    创建支持上下文管理的pool
+    """
     coro = _create_pool(
         database=database,
         minsize=minsize,
         maxsize=maxsize,
         echo=echo,
-        pool_recycle=pool_recycle,
         loop=loop,
         **kwargs
     )
+    return _PoolContextManager(coro)
 
 
-async def _create_pool(
-        database=None,
+@asyncio.coroutine
+def _create_pool(
+        database,
         minsize=1,
         maxsize=10,
         echo=False,
-        pool_recycle=-1,
         loop=None,
         **kwargs
 ):
@@ -42,13 +47,12 @@ async def _create_pool(
         minsize=minsize,
         maxsize=maxsize,
         echo=echo,
-        pool_recycle=pool_recycle,
         loop=loop,
         **kwargs
     )
     if minsize > 0:
-        with (await pool._cond):
-            await pool._fill_free_pool(False)
+        with (yield from pool._cond):
+            yield from pool._fill_free_pool(False)
     return pool
 
 
@@ -63,7 +67,6 @@ class Pool(asyncio.AbstractServer):
             minsize,
             maxsize,
             echo,
-            pool_recycle,
             loop,
             **kwargs
     ):
@@ -83,7 +86,6 @@ class Pool(asyncio.AbstractServer):
         self._closing = False
         self._closed = False
         self._echo = echo
-        self._recycle = pool_recycle
 
     @property
     def echo(self):
@@ -104,3 +106,140 @@ class Pool(asyncio.AbstractServer):
     @property
     def freesize(self):
         return len(self._free)
+
+    @property
+    def closed(self):
+        return self._closed
+
+    @asyncio.coroutine
+    def clear(self):
+        """
+        Close all free connections in pool.
+        """
+        with (yield from self._cond):
+            while self._free:
+                conn = self._free.popleft()
+                yield from conn.close()
+            self._cond.notify()
+
+    def close(self):
+        """
+        Close pool.
+        Mark all pool connections to be closed on getting back to pool.
+        Closed pool doesn't allow to acquire new connections.
+        """
+        if self._closed:
+            return
+        self._closing = True
+
+    @asyncio.coroutine
+    def wait_closed(self):
+        """
+        Wait for closing all pool's connections.
+        """
+        if self._closed:
+            return
+        if not self._closing:
+            raise RuntimeError(
+                ".wait_closed() should be called "
+                "after .close()"
+            )
+
+        while self._free:
+            conn = self._free.popleft()
+            yield from conn.close()
+
+        with (yield from self._cond):
+            while self.size > self.freesize:
+                yield from self._cond.wait()
+
+        self._closed = True
+
+    def acquire(self):
+        """
+        Acquire free connection from the pool.
+        """
+        coro = self._acquire()
+        return _PoolAcquireContextManager(coro, self)
+
+    @asyncio.coroutine
+    def _acquire(self):
+        if self._closing:
+            raise RuntimeError(
+                "Cannot acquire connection after closing pool"
+            )
+        with (yield from self._cond):
+            while True:
+                yield from self._fill_free_pool(True)
+                if self._free:
+                    conn = self._free.popleft()
+                    assert not conn.closed, conn
+                    assert conn not in self._used, (conn, self._used)
+                    self._used.add(conn)
+                    return conn
+                else:
+                    yield from self._cond.wait()
+
+    @asyncio.coroutine
+    def _fill_free_pool(self, override_min):
+        """
+        iterate over free connections and remove timeouted ones
+        """
+        while self.size < self.minsize:
+            self._acquiring += 1
+            try:
+                conn = yield from connect(
+                    database=self._database,
+                    echo=self._echo,
+                    loop=self._loop,
+                    **self._conn_kwargs
+                )
+                self._free.append(conn)
+                self._cond.notify()
+            finally:
+                self._acquiring -= 1
+        if self._free:
+            return
+
+        if override_min and self.size < self.maxsize:
+            self._acquiring += 1
+            try:
+                conn = yield from connect(
+                    database=self._database,
+                    echo=self._echo,
+                    loop=self._loop,
+                    **self._conn_kwargs
+                )
+                self._free.append(conn)
+                self._cond.notify()
+            finally:
+                self._acquiring -= 1
+
+    @asyncio.coroutine
+    def _wakeup(self):
+        with (yield from self._cond):
+            self._cond.notify()
+
+    @asyncio.coroutine
+    def release(self, conn):
+        """
+        Release free connection back to the connection pool.
+        """
+        assert conn in self._used, (conn, self._used)
+        self._used.remove(conn)
+        if not conn.closed:
+            if self._closing:
+                yield from conn.close()
+            else:
+                self._free.append(conn)
+            yield from self._wakeup()
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            self.close()
+            yield from self.wait_closed()

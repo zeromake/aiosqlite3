@@ -1,10 +1,8 @@
 """
 代理方法工具
 """
-
 import asyncio
 import sys
-from collections.abc import Coroutine
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -70,6 +68,49 @@ class _ContextManager(base):
         def __aexit__(self, exc_type, exc, tb):
             yield from self._obj.close()
             self._obj = None
+
+
+class _PoolContextManager(_ContextManager):
+    if PY_35:
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            """
+            async with or with (yield from xx) exit
+            """
+            self._obj.close()
+            yield from self._obj.wait_closed()
+            self._obj = None
+
+
+class _PoolAcquireContextManager(_ContextManager):
+    __slots__ = ('_coro', '_conn', '_pool')
+
+    def __init__(self, coro, pool):
+        self._coro = coro
+        self._conn = None
+        self._pool = pool
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            self._conn = yield from self._coro
+            return self._conn
+
+        @asyncio.coroutine
+        def __aexit__(self):
+            try:
+                yield from self._pool.release(self._conn)
+            finally:
+                self._pool = None
+                self._conn = None
+
+
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_ContextManager,)
+    except Exception as error:
+        pass
 
 
 def delegate_to_executor(bind_attr, attrs):
