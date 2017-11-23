@@ -87,6 +87,20 @@ class Pool(asyncio.AbstractServer):
         self._closed = False
         self._echo = echo
 
+    def __enter__(self):
+        """
+        普通上下文处理
+        """
+        return self
+
+    @asyncio.coroutine
+    def __exit__(self, exc_type, exc, tbs):
+        """
+        普通上下文处理
+        """
+        self.close()
+        yield from self.wait_closed()
+
     @property
     def echo(self):
         return self._echo

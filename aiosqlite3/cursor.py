@@ -12,8 +12,7 @@ from .utils import delegate_to_executor, proxy_property_directly
     (
         'fetchone',
         'fetchmany',
-        'fetchall',
-        'close'
+        'fetchall'
     )
 )
 @proxy_property_directly(
@@ -35,6 +34,20 @@ class Cursor:
         self._loop = conn.loop
         self._echo = echo
         self._executor = None
+        self._closed = False
+
+    def __enter__(self):
+        """
+        普通上下文处理
+        """
+        return self
+
+    @asyncio.coroutine
+    def __exit__(self, exc_type, exc, tbs):
+        """
+        普通上下文处理
+        """
+        yield from self.close()
 
     @asyncio.coroutine
     def _execute(self, fn, *args, **kwargs):
@@ -48,12 +61,16 @@ class Cursor:
     def arraysize(self):
         return self._cursor.arraysize
 
+    @property
+    def closed(self):
+        return self._closed
+
     @arraysize.setter
     def arraysize(self, value):
         self._cursor.arraysize = value
 
     @asyncio.coroutine
-    def execute(self, sql, parameters=[]):
+    def execute(self, sql, parameters=None):
         """
         执行sql语句
         """
@@ -63,6 +80,8 @@ class Cursor:
                 sql,
                 str(parameters)
             )
+        if parameters is None:
+            parameters = []
         yield from self._execute(self._cursor.execute, sql, parameters)
 
     @asyncio.coroutine
@@ -86,3 +105,12 @@ class Cursor:
         if self._echo:
             logger.info('cursor.executescript->\n  sql_script: %s', sql_script)
         yield from self._execute(self._cursor.executescript, sql_script)
+
+    @asyncio.coroutine
+    def close(self):
+        """
+        关闭
+        """
+        if not self._closed:
+            yield from self._execute(self._cursor.close)
+            self._closed = True

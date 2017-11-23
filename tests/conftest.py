@@ -46,22 +46,24 @@ def executor():
     yield executor
     executor.shutdown()
 
+
 @pytest.fixture
-@asyncio.coroutine
-def pool(loop, db):
-    pool = yield from aiosqlite3.create_pool(loop=loop, database=db)
+async def pool(loop, db):
+    pool = await aiosqlite3.create_pool(loop=loop, database=db)
+    print(0, pool.freesize, pool.maxsize, pool._acquiring)
     yield pool
 
     pool.close()
-    yield from pool.wait_closed()
+    await pool.wait_closed()
+
 
 @pytest.fixture
-@asyncio.coroutine
-def pool_maker(loop):
+async def pool_maker(loop):
     pool_list = []
 
-    def make(loop, **kw):
-        pool = yield from aiosqlite3.create_pool(loop=loop, **kw)
+    async def make(loop, **kw):
+        pool = await aiosqlite3.create_pool(loop=loop, **kw)
+        print('pool_maker', pool.freesize, pool.maxsize, pool._acquiring)
         pool_list.append(pool)
         return pool
 
@@ -69,4 +71,4 @@ def pool_maker(loop):
 
     for pool in pool_list:
         pool.close()
-        yield from pool.wait_closed()
+        await pool.wait_closed()

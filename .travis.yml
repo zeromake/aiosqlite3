@@ -1,7 +1,7 @@
 language: python
 
 python:
-    - 3.5
+    - 3.4
     - 3.6
 
 install:
@@ -9,8 +9,17 @@ install:
     - pipenv install -d
 
 script:
-    - make test
     - make cov
+    - make build
 
 after_success:
     - codecov
+
+deploy:
+    provider: releases
+    api_key:
+        secure: ${GITHUB_TOKEN}
+    file: dist/aiosqlite3-*.whl
+    skip_cleanup: true
+    on:
+        tags: true

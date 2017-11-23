@@ -81,6 +81,41 @@ class _PoolContextManager(_ContextManager):
             yield from self._obj.wait_closed()
             self._obj = None
 
+class _LazyloadContextManager(_ContextManager):
+    """
+    延迟上下文
+    """
+    __slots__ = ('_coro', '_obj', '_lazyload')
+
+    def __init__(self, coro, lazyload):
+        if not lazyload:
+            raise TypeError('lazyload is function')
+        self._coro = coro
+        self._obj = None
+        self._lazyload = lazyload
+
+    @asyncio.coroutine
+    def __iter__(self):
+        resp = yield from self._coro
+        resp = self._lazyload(resp)
+        return resp
+
+    if PY_35:
+        def __await__(self):
+            resp = yield from self._coro
+            resp = self._lazyload(resp)
+            return resp
+
+        @asyncio.coroutine
+        def __aenter__(self):
+            resp = yield from self._coro
+            self._obj = self._lazyload(resp)
+            return self._obj
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            yield from self._obj.close()
+            self._obj = None
 
 class _PoolAcquireContextManager(_ContextManager):
     __slots__ = ('_coro', '_conn', '_pool')
@@ -97,7 +132,7 @@ class _PoolAcquireContextManager(_ContextManager):
             return self._conn
 
         @asyncio.coroutine
-        def __aexit__(self):
+        def __aexit__(self, exc_type, exc, tb):
             try:
                 yield from self._pool.release(self._conn)
             finally:
@@ -133,19 +168,19 @@ def delegate_to_executor(bind_attr, attrs):
     return cls_builder
 
 
-def proxy_method_directly(bind_attr, attrs):
-    """
-    为类添加代理方法
-    """
-    def cls_builder(cls):
-        """
-        添加到类
-        """
-        for attr_name in attrs:
-            setattr(cls, attr_name, _make_proxy_method(bind_attr, attr_name))
-        return cls
+# def proxy_method_directly(bind_attr, attrs):
+#     """
+#     为类添加代理方法
+#     """
+#     def cls_builder(cls):
+#         """
+#         添加到类
+#         """
+#         for attr_name in attrs:
+#             setattr(cls, attr_name, _make_proxy_method(bind_attr, attr_name))
+#         return cls
 
-    return cls_builder
+#     return cls_builder
 
 
 def proxy_property_directly(bind_attr, attrs):
@@ -172,11 +207,11 @@ def _make_delegate_method(bind_attr, attr_name):
     return method
 
 
-def _make_proxy_method(bind_attr, attr_name):
-    def method(self, *args, **kwargs):
-        bind = getattr(self, bind_attr)
-        return getattr(bind, attr_name)(*args, **kwargs)
-    return method
+# def _make_proxy_method(bind_attr, attr_name):
+#     def method(self, *args, **kwargs):
+#         bind = getattr(self, bind_attr)
+#         return getattr(bind, attr_name)(*args, **kwargs)
+#     return method
 
 
 def _make_proxy_property(bind_attr, attr_name):

@@ -5,6 +5,7 @@ import asyncio
 import pytest
 
 import aiosqlite3
+from tests.utils import PY_35
 
 def test_connect(loop, conn):
     """
@@ -47,10 +48,10 @@ def test_close_twice(conn):
     """
     测试连接关闭
     """
-    assert conn.closed, False
+    assert not conn.closed
     yield from conn.close()
     yield from conn.close()
-    assert conn.closed, True
+    assert conn.closed
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -86,7 +87,6 @@ def test_rollback(conn):
     assert value is None
     yield from cur.execute("DROP TABLE t1;")
     yield from conn.commit()
-
     yield from conn.close()
 
 @pytest.mark.asyncio
@@ -100,12 +100,22 @@ def test_custom_executor(loop, db, executor):
     assert resp == 10
     assert conn.closed
 
-@pytest.mark.asyncio
-@asyncio.coroutine
-def test_connect_context_manager(loop, db):
-    """
-    上下文支持
-    """
-    with (yield from aiosqlite3.connect(db, loop=loop)) as conn:
-        assert not conn.closed
-    assert conn.closed
+if PY_35:
+    @pytest.mark.asyncio
+    async def test_connect_context_manager(loop, db):
+        """
+        上下文支持
+        """
+        async with aiosqlite3.connect(db, loop=loop) as conn:
+            assert not conn.closed
+        assert conn.closed
+else:
+    @pytest.mark.asyncio
+    @asyncio.coroutine
+    def test_connect_context_manager(loop, db):
+        """
+        上下文支持
+        """
+        with (yield from aiosqlite3.connect(db, loop=loop)) as conn:
+            assert not conn.closed
+        assert conn.closed

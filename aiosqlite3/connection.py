@@ -7,6 +7,7 @@ import sqlite3
 from functools import partial
 from .utils import (
     _ContextManager,
+    _LazyloadContextManager,
     delegate_to_executor,
     proxy_property_directly
 )
@@ -65,6 +66,19 @@ class Connection:
         self._check_same_thread = check_same_thread
         self._conn = None
 
+    def __enter__(self):
+        """
+        普通上下文处理
+        """
+        return self
+
+    @asyncio.coroutine
+    def __exit__(self, exc_type, exc, tbs):
+        """
+        普通上下文处理
+        """
+        yield from self.close()
+
     def _execute(self, func, *args, **kwargs):
         """
         把同步转为async运行
@@ -89,6 +103,11 @@ class Connection:
         self._conn = yield from func
         if self._echo:
             logger.debug('connect-> "%s" ok', self._database)
+
+
+    @property
+    def echo(self):
+        return self._echo
 
     @property
     def loop(self):
@@ -147,21 +166,32 @@ class Connection:
     def text_factory(self, value):
         self._conn.text_factory = value
 
-    @asyncio.coroutine
-    def _cursor(self, cursor=None):
+    # @asyncio.coroutine
+    # def _cursor(self):
+    #     """
+    #     获取异步代理cursor对象
+    #     """
+    #     cursor = yield from self._execute(self._conn.cursor)
+    #     return self._create_cursor(cursor)
+
+    def _create_cursor(self, cursor):
         """
-        获取异步代理cursor对象
+        创建代理cursor
         """
-        if cursor is None:
-            cursor = yield from self._execute(self._conn.cursor)
-        connection = self
-        return Cursor(cursor, connection, self._echo)
+        return Cursor(cursor, self, self._echo)
+
+    def _create_context_cursor(self, coro):
+        """
+        创建支持await上下文cursor
+        """
+        return _LazyloadContextManager(coro, self._create_cursor)
 
     def cursor(self):
         """
         转换为上下文模式
         """
-        return _ContextManager(self._cursor())
+        coro = self._execute(self._conn.cursor)
+        return self._create_context_cursor(coro)
 
     @asyncio.coroutine
     def close(self):
@@ -176,7 +206,6 @@ class Connection:
             logger.debug('close-> "%s" ok', self._database)
         return res
 
-    @asyncio.coroutine
     def execute(
             self,
             sql,
@@ -193,10 +222,9 @@ class Connection:
             )
         if parameters is None:
             parameters = []
-        cursor = yield from self._execute(self._conn.execute, sql, parameters)
-        return _ContextManager(self._cursor(cursor))
+        coro = self._execute(self._conn.execute, sql, parameters)
+        return self._create_context_cursor(coro)
 
-    @asyncio.coroutine
     def executemany(
             self,
             sql,
@@ -211,14 +239,13 @@ class Connection:
                 sql,
                 str(parameters)
             )
-        cursor = yield from self._execute(
+        coro = self._execute(
             self._conn.executemany,
             sql,
             parameters
         )
-        return _ContextManager(self._cursor(cursor))
+        return self._create_context_cursor(coro)
 
-    @asyncio.coroutine
     def executescript(
             self,
             sql_script,
@@ -231,11 +258,11 @@ class Connection:
                 'connection.executescript->\n  sql_script: %s',
                 sql_script
             )
-        cursor = yield from self._execute(
+        coro = yield from self._execute(
             self._conn.executescript,
             sql_script
         )
-        return _ContextManager(self._cursor(cursor))
+        return self._create_context_cursor(coro)
 
 
 def connect(

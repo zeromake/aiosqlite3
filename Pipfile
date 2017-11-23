@@ -15,6 +15,7 @@ pytest = "*"
 pytest-sugar = "*"
 pytest-cov = "*"
 codecov = "*"
+pytest-asyncio = "*"
 
 
 [requires]

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8967eeeea5cc05242d7c8722786065aff33012d02f8d2409ac39fa415daeb116"
+            "sha256": "3897aabe87011c6b1da75eae1091ab5b54b0cd875e085fce05f7b5bd9ed42d7a"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -30,9 +30,25 @@
     },
     "default": {},
     "develop": {
+        "certifi": {
+            "hashes": [],
+            "version": "==2017.11.5"
+        },
+        "chardet": {
+            "hashes": [],
+            "version": "==3.0.4"
+        },
+        "codecov": {
+            "hashes": [],
+            "version": "==2.0.9"
+        },
         "coverage": {
             "hashes": [],
             "version": "==4.4.2"
+        },
+        "idna": {
+            "hashes": [],
+            "version": "==2.6"
         },
         "py": {
             "hashes": [],
@@ -42,6 +58,10 @@
             "hashes": [],
             "version": "==3.2.5"
         },
+        "pytest-asyncio": {
+            "hashes": [],
+            "version": "==0.8.0"
+        },
         "pytest-cov": {
             "hashes": [],
             "version": "==2.5.1"
@@ -50,9 +70,17 @@
             "hashes": [],
             "version": "==0.9.0"
         },
+        "requests": {
+            "hashes": [],
+            "version": "==2.18.4"
+        },
         "termcolor": {
             "hashes": [],
             "version": "==1.1.0"
+        },
+        "urllib3": {
+            "hashes": [],
+            "version": "==1.22"
         }
     }
 }
