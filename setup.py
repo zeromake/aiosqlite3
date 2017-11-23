@@ -1,13 +1,20 @@
 #!/bin/env python
 # coding: utf-8
 
-"""
-
-"""
 import os
 import re
+import sys
 from setuptools import setup, find_packages
 
+PY_VER = sys.version_info
+install_requires = []
+
+if PY_VER >= (3, 4):
+    pass
+elif PY_VER >= (3, 3):
+    install_requires.append('asyncio')
+else:
+    raise RuntimeError("aiomysql doesn't suppport Python earllier than 3.3")
 
 def find_version(*file_paths):
     """
@@ -37,13 +44,17 @@ setup(
     author='zeromake',
     author_email='a390720046@gmail.com',
     description='sqlite3 support for asyncio.',
-    platforms=['any'],
+    platforms=['POSIX'],
     classifiers=[
         'License :: OSI Approved :: MIT License',
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
-        "Topic :: System :: Filesystems",
-    ]
+        'Operating System :: POSIX',
+        'Environment :: Web Environment',
+        "Topic :: Database",
+        'Framework :: AsyncIO',
+    ],
+    install_requires=install_requires
 )
