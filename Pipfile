@@ -14,7 +14,7 @@ name = "pypi"
 pytest = "*"
 pytest-sugar = "*"
 pytest-cov = "*"
-coverage = "*"
+codecov = "*"
 
 
 [requires]
