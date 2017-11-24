@@ -4,7 +4,7 @@ python:
     - 3.6
 
 install:
-    - pip install pipenv -i https://pypi.doubanio.com/simple/
+    - pip install pipenv -i https://mirrors.aliyun.com/pypi/
     - pipenv install -d
 
 script:
