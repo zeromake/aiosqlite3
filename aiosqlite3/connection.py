@@ -14,6 +14,7 @@ from .utils import (
 from .cursor import Cursor
 from .log import logger
 
+__all__ = ['Connection', 'connect']
 
 @delegate_to_executor(
     '_conn',
@@ -66,18 +67,25 @@ class Connection:
         self._check_same_thread = check_same_thread
         self._conn = None
 
-    def __enter__(self):
-        """
-        普通上下文处理
-        """
-        return self
+    # def __enter__(self):
+    #     """
+    #     普通上下文处理
+    #     """
+    #     return self
 
-    @asyncio.coroutine
-    def __exit__(self, exc_type, exc, tbs):
+    # def __exit__(self, exc_type, exc, tbs):
+    #     """
+    #     普通上下文处理
+    #     """
+    #     self._loop.run_until_complete(self.close())
+
+    def _log(self, level, message, *args):
         """
-        普通上下文处理
+        日志处理
         """
-        yield from self.close()
+        if self._echo:
+            log_fun = getattr(logger, level)
+            log_fun(message, *args)
 
     def _execute(self, func, *args, **kwargs):
         """
@@ -101,8 +109,11 @@ class Connection:
             **self._kwargs
         )
         self._conn = yield from func
-        if self._echo:
-            logger.debug('connect-> "%s" ok', self._database)
+        self._log(
+            'debug',
+            'connect-> "%s" ok',
+            self._database
+        )
 
 
     @property
@@ -202,8 +213,11 @@ class Connection:
             return
         res = yield from self._execute(self._conn.close)
         self._conn = None
-        if self._echo:
-            logger.debug('close-> "%s" ok', self._database)
+        self._log(
+            'debug',
+            'close-> "%s" ok',
+            self._database
+        )
         return res
 
     def execute(
@@ -214,17 +228,18 @@ class Connection:
         """
         Helper to create a cursor and execute the given query.
         """
-        if self._echo:
-            logger.info(
-                'connection.execute->\n  sql: %s\n  args: %s',
-                sql,
-                str(parameters)
-            )
+        self._log(
+            'info',
+            'connection.execute->\n  sql: %s\n  args: %s',
+            sql,
+            str(parameters)
+        )
         if parameters is None:
             parameters = []
         coro = self._execute(self._conn.execute, sql, parameters)
         return self._create_context_cursor(coro)
 
+    @asyncio.coroutine
     def executemany(
             self,
             sql,
@@ -233,12 +248,12 @@ class Connection:
         """
         Helper to create a cursor and execute the given multiquery.
         """
-        if self._echo:
-            logger.info(
-                'connection.executemany->\n  sql: %s\n  args: %s',
-                sql,
-                str(parameters)
-            )
+        self._log(
+            'info',
+            'connection.executemany->\n  sql: %s\n  args: %s',
+            sql,
+            str(parameters)
+        )
         coro = self._execute(
             self._conn.executemany,
             sql,
@@ -253,12 +268,12 @@ class Connection:
         """
         Helper to create a cursor and execute a user script.
         """
-        if self._echo:
-            logger.info(
-                'connection.executescript->\n  sql_script: %s',
-                sql_script
-            )
-        coro = yield from self._execute(
+        self._log(
+            'info',
+            'connection.executescript->\n  sql_script: %s',
+            sql_script
+        )
+        coro = self._execute(
             self._conn.executescript,
             sql_script
         )

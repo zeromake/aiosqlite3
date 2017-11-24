@@ -339,7 +339,9 @@ def test_wait_closed(loop, pool_maker, db):
         wait_closed(),
         loop=loop
     )
-    assert ['release', 'release', 'wait_closed'] == ops
+    assert len(ops) == 3
+    assert 'wait_closed' in ops
+    assert 'release' in ops
     assert pool.freesize == 0
 
 
@@ -417,78 +419,76 @@ def test_pool_with_executor(loop, pool_maker, db, executor):
     pool.close()
     yield from pool.wait_closed()
 
-if PY_35:
-    @pytest.mark.asyncio
-    async def test_pool_context_manager(loop, pool):
+@pytest.mark.asyncio
+async def test_pool_context_manager(loop, pool):
+    assert not pool.closed
+    async with pool:
         assert not pool.closed
-        async with pool:
-            assert not pool.closed
-        assert pool.closed
+    assert pool.closed
 
 
-    @pytest.mark.asyncio
-    async def test_pool_context_manager2(loop, pool):
+@pytest.mark.asyncio
+async def test_pool_context_manager2(loop, pool):
+    async with pool.acquire() as conn:
+        assert not conn.closed
+        cur = await conn.cursor()
+        await cur.execute('SELECT 1')
+        val = await cur.fetchone()
+        assert (1,) == tuple(val)
+
+
+@pytest.mark.asyncio
+async def test_all_context_managers(db, loop, executor):
+    kw = dict(database=db, loop=loop, executor=executor)
+    async with aiosqlite3.create_pool(**kw) as pool:
         async with pool.acquire() as conn:
-            assert not conn.closed
-            cur = await conn.cursor()
-            await cur.execute('SELECT 1')
-            val = await cur.fetchone()
-            assert (1,) == tuple(val)
+            async with conn.cursor() as cur:
+                assert not pool.closed
+                assert not conn.closed
+                assert not cur.closed
+
+                await cur.execute('SELECT 1')
+                val = await cur.fetchone()
+                assert (1,) == tuple(val)
+
+    assert pool.closed
+    assert conn.closed
+    assert cur.closed
+# @pytest.mark.asyncio
+# @asyncio.coroutine
+# def test_pool_context_manager(loop, pool):
+#     assert not pool.closed
+#     with pool:
+#         assert not pool.closed
+#     assert pool.closed
 
 
-    @pytest.mark.asyncio
-    async def test_all_context_managers(db, loop, executor):
-        kw = dict(database=db, loop=loop, executor=executor)
-        async with aiosqlite3.create_pool(**kw) as pool:
-            async with pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    assert not pool.closed
-                    assert not conn.closed
-                    assert not cur.closed
-
-                    await cur.execute('SELECT 1')
-                    val = await cur.fetchone()
-                    assert (1,) == tuple(val)
-
-        assert pool.closed
-        assert conn.closed
-        assert cur.closed
-else:
-    @pytest.mark.asyncio
-    @asyncio.coroutine
-    def test_pool_context_manager(loop, pool):
-        assert not pool.closed
-        with pool:
-            assert not pool.closed
-        assert pool.closed
+# @pytest.mark.asyncio
+# @asyncio.coroutine
+# def test_pool_context_manager2(loop, pool):
+#     with (yield from pool.acquire()) as conn:
+#         assert not conn.closed
+#         cur = yield from conn.cursor()
+#         yield from cur.execute('SELECT 1')
+#         val = yield from cur.fetchone()
+#         assert (1,) == tuple(val)
 
 
-    @pytest.mark.asyncio
-    @asyncio.coroutine
-    def test_pool_context_manager2(loop, pool):
-        with (yield from pool.acquire()) as conn:
-            assert not conn.closed
-            cur = yield from conn.cursor()
-            yield from cur.execute('SELECT 1')
-            val = yield from cur.fetchone()
-            assert (1,) == tuple(val)
+#     @pytest.mark.asyncio
+#     @asyncio.coroutine
+#     def test_all_context_managers(db, loop, executor):
+#         kw = dict(database=db, loop=loop, executor=executor)
+#         with (yield from aiosqlite3.create_pool(**kw)) as pool:
+#             with (yield from pool.acquire()) as conn:
+#                 with (yield from conn.cursor()) as cur:
+#                     assert not pool.closed
+#                     assert not conn.closed
+#                     assert not cur.closed
 
+#                     yield from cur.execute('SELECT 1')
+#                     val = yield from cur.fetchone()
+#                     assert (1,) == tuple(val)
 
-    @pytest.mark.asyncio
-    @asyncio.coroutine
-    def test_all_context_managers(db, loop, executor):
-        kw = dict(database=db, loop=loop, executor=executor)
-        with (yield from aiosqlite3.create_pool(**kw)) as pool:
-            with (yield from pool.acquire()) as conn:
-                with (yield from conn.cursor()) as cur:
-                    assert not pool.closed
-                    assert not conn.closed
-                    assert not cur.closed
-
-                    yield from cur.execute('SELECT 1')
-                    val = yield from cur.fetchone()
-                    assert (1,) == tuple(val)
-
-        assert pool.closed
-        assert conn.closed
-        assert cur.closed
+#         assert pool.closed
+#         assert conn.closed
+#         assert cur.closed

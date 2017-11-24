@@ -50,7 +50,6 @@ def executor():
 @pytest.fixture
 async def pool(loop, db):
     pool = await aiosqlite3.create_pool(loop=loop, database=db)
-    print(0, pool.freesize, pool.maxsize, pool._acquiring)
     yield pool
 
     pool.close()
@@ -63,7 +62,6 @@ async def pool_maker(loop):
 
     async def make(loop, **kw):
         pool = await aiosqlite3.create_pool(loop=loop, **kw)
-        print('pool_maker', pool.freesize, pool.maxsize, pool._acquiring)
         pool_list.append(pool)
         return pool
 
@@ -72,3 +70,13 @@ async def pool_maker(loop):
     for pool in pool_list:
         pool.close()
         await pool.wait_closed()
+
+
+@pytest.fixture
+async def cursor(conn):
+    """
+    获取默认cursor
+    """
+    cursor_obj = await conn.cursor()
+    yield cursor_obj
+    await cursor_obj.close()

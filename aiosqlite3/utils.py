@@ -9,7 +9,7 @@ PY_35 = sys.version_info >= (3, 5)
 if PY_35:
     from collections.abc import Coroutine
     base = Coroutine
-else:
+else: # pragma: no cover
     base = object
 
 
@@ -23,7 +23,7 @@ class _ContextManager(base):
     def send(self, value):
         return self._coro.send(value)
 
-    def throw(self, typ, val=None, tb=None):
+    def throw(self, typ, val=None, tb=None): # pragma: no cover
         if val is None:
             return self._coro.throw(typ)
         elif tb is None:
@@ -31,22 +31,22 @@ class _ContextManager(base):
         else:
             return self._coro.throw(typ, val, tb)
 
-    def close(self):
+    def close(self): # pragma: no cover
         return self._coro.close()
 
     @property
-    def gi_frame(self):
+    def gi_frame(self): # pragma: no cover
         return self._coro.gi_frame
 
     @property
-    def gi_running(self):
+    def gi_running(self): # pragma: no cover
         return self._coro.gi_running
 
     @property
-    def gi_code(self):
+    def gi_code(self): # pragma: no cover
         return self._coro.gi_code
 
-    def __next__(self):
+    def __next__(self): # pragma: no cover
         return self.send(None)
 
     @asyncio.coroutine
@@ -68,6 +68,8 @@ class _ContextManager(base):
         def __aexit__(self, exc_type, exc, tb):
             yield from self._obj.close()
             self._obj = None
+    else: # pragma: no cover
+        pass
 
 
 class _PoolContextManager(_ContextManager):
@@ -80,6 +82,8 @@ class _PoolContextManager(_ContextManager):
             self._obj.close()
             yield from self._obj.wait_closed()
             self._obj = None
+    else: # pragma: no cover
+        pass
 
 class _LazyloadContextManager(_ContextManager):
     """
@@ -88,7 +92,7 @@ class _LazyloadContextManager(_ContextManager):
     __slots__ = ('_coro', '_obj', '_lazyload')
 
     def __init__(self, coro, lazyload):
-        if not lazyload:
+        if not lazyload: # pragma: no cover
             raise TypeError('lazyload is function')
         self._coro = coro
         self._obj = None
@@ -116,6 +120,9 @@ class _LazyloadContextManager(_ContextManager):
         def __aexit__(self, exc_type, exc, tb):
             yield from self._obj.close()
             self._obj = None
+    
+    else: # pragma: no cover
+        pass
 
 class _PoolAcquireContextManager(_ContextManager):
     __slots__ = ('_coro', '_conn', '_pool')
@@ -138,14 +145,18 @@ class _PoolAcquireContextManager(_ContextManager):
             finally:
                 self._pool = None
                 self._conn = None
+    else: # pragma: no cover
+        pass
 
 
-if not PY_35:
+if not PY_35: # pragma: no cover
     try:
         from asyncio import coroutines
         coroutines._COROUTINE_TYPES += (_ContextManager,)
     except Exception as error:
         pass
+else:
+    pass
 
 
 def delegate_to_executor(bind_attr, attrs):

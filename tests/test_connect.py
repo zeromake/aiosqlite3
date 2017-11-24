@@ -16,6 +16,100 @@ def test_connect(loop, conn):
     assert not conn.closed
     assert not conn.autocommit
     assert conn.isolation_level is ''
+    assert conn.row_factory is None
+    assert conn.text_factory is str
+
+def test_connect_setter(conn):
+    """
+    测试connect的setter
+    """
+    def dict_factory(cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
+    def unicode_str(x):
+        return unicode(x, "utf-8", "ignore")
+
+    assert not conn.autocommit
+    conn.isolation_level = None
+    assert conn.autocommit
+    assert conn.row_factory is None
+    assert conn.text_factory is str
+    conn.row_factory = dict_factory
+    assert conn.row_factory is dict_factory
+
+    conn.text_factory = unicode_str
+    assert conn.text_factory is unicode_str
+
+@pytest.mark.asyncio
+@asyncio.coroutine
+def test_connect_execute(conn):
+    """
+    测试execute
+    """
+    assert conn.echo
+    sql = 'SELECT 10'
+    cursor = yield from conn.execute(sql, [])
+    (resp,) = yield from cursor.fetchone()
+    yield from cursor.close()
+    assert resp == 10
+
+@pytest.mark.asyncio
+@asyncio.coroutine
+def test_connect_executemany(conn):
+    """
+    测试批量执行
+    """
+    def char_generator(start=1):
+        for c in range(start, start+2):
+            yield (c, str(c))
+    create_table_sql = '''CREATE TABLE `student` (
+                            `id` int(11) NOT NULL,
+                            `name` varchar(20) NOT NULL,
+                            PRIMARY KEY (`id`)
+                        )'''
+    yield from conn.execute(create_table_sql)
+    yield from conn.commit()
+    yield from conn.executemany('insert into student(id, name) values(?,?)', char_generator())
+    yield from conn.commit()
+    cursor = yield from conn.execute('SELECT * FROM student')
+    assert cursor.rowcount == -1
+    resp = yield from cursor.fetchone()
+    index = 1
+    while resp:
+        assert resp == (index, str(index))
+        resp = yield from cursor.fetchone()
+        index += 1
+    assert index == 3
+
+@pytest.mark.asyncio
+async def test_connect_executescript(db):
+    """
+    测试executescript
+    """
+    conn = await aiosqlite3.connect(database=db)
+    await conn.execute('''CREATE TABLE `student` (
+                            `id` int(11) NOT NULL,
+                            `name` varchar(20) NOT NULL,
+                            PRIMARY KEY (`id`)
+                        )''')
+    await conn.executescript("""
+    insert into student(id, name) values(1,'1');
+    insert into student(id, name) values(2,'2');
+    """)
+    cursor = await conn.execute('SELECT * FROM student')
+    index = 1
+    async for resp in cursor:
+        print(resp)
+        assert resp == (index, str(index))
+        index += 1
+
+    # resp = yield from cursor.fetchone()
+    # while resp:
+    #     resp = yield from cursor.fetchone()
+    # assert index == 3
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -86,6 +180,8 @@ def test_rollback(conn):
     value = yield from cur.fetchone()
     assert value is None
     yield from cur.execute("DROP TABLE t1;")
+    yield from cur.close()
+    yield from cur.close()
     yield from conn.commit()
     yield from conn.close()
 
@@ -100,22 +196,28 @@ def test_custom_executor(loop, db, executor):
     assert resp == 10
     assert conn.closed
 
-if PY_35:
-    @pytest.mark.asyncio
-    async def test_connect_context_manager(loop, db):
-        """
-        上下文支持
-        """
-        async with aiosqlite3.connect(db, loop=loop) as conn:
-            assert not conn.closed
-        assert conn.closed
-else:
-    @pytest.mark.asyncio
-    @asyncio.coroutine
-    def test_connect_context_manager(loop, db):
-        """
-        上下文支持
-        """
-        with (yield from aiosqlite3.connect(db, loop=loop)) as conn:
-            assert not conn.closed
-        assert conn.closed
+@pytest.mark.asyncio
+async def test_connect_context_manager(loop, db):
+    """
+    上下文支持
+    """
+    async with aiosqlite3.connect(db, loop=loop) as conn:
+        assert not conn.closed
+    assert conn.closed
+
+@pytest.mark.asyncio
+async def test_connect_check_same_thread(loop, db):
+    """
+    测试同步错误
+    """
+    with pytest.raises(ValueError):
+        conn = await aiosqlite3.connect(db, loop=loop, check_same_thread=True)
+
+# def test_connect_context_sync_manager(conn):
+#     """
+#     测试普通上下文
+#     """
+#     assert not conn.closed
+#     with conn:
+#         pass
+#     assert conn.closed

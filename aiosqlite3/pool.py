@@ -8,6 +8,7 @@ from .connection import connect
 from .utils import _PoolContextManager, _PoolAcquireContextManager, PY_35
 from .log import logger
 
+__all__ = ['create_pool', 'Pool']
 
 def create_pool(
         database,
@@ -87,19 +88,18 @@ class Pool(asyncio.AbstractServer):
         self._closed = False
         self._echo = echo
 
-    def __enter__(self):
-        """
-        普通上下文处理
-        """
-        return self
+    # def __enter__(self):
+    #     """
+    #     普通上下文处理
+    #     """
+    #     return self
 
-    @asyncio.coroutine
-    def __exit__(self, exc_type, exc, tbs):
-        """
-        普通上下文处理
-        """
-        self.close()
-        yield from self.wait_closed()
+    # def __exit__(self, exc_type, exc, tbs):
+    #     """
+    #     普通上下文处理
+    #     """
+    #     self.close()
+    #     self._loop.run_until_complete(self.wait_closed())
 
     @property
     def echo(self):
@@ -257,3 +257,5 @@ class Pool(asyncio.AbstractServer):
         def __aexit__(self, exc_type, exc_val, exc_tb):
             self.close()
             yield from self.wait_closed()
+    else: # pragma: no cover
+        pass
