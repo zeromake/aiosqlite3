@@ -5,6 +5,10 @@ import concurrent
 import asyncio
 import sqlite3
 from functools import partial
+from threading import Event
+from queue import Queue, Empty
+
+from .sqlite_thread import SqliteThread
 from .utils import (
     _ContextManager,
     _LazyloadContextManager,
@@ -53,7 +57,7 @@ class Connection:
             **kwargs
     ):
         if check_same_thread:
-            raise ValueError(
+            logger.warn(
                 'check_same_thread not is False -> %s'
                 % check_same_thread
             )
@@ -66,6 +70,21 @@ class Connection:
         self._isolation_level = isolation_level
         self._check_same_thread = check_same_thread
         self._conn = None
+        if check_same_thread:
+            self._thread_lock = asyncio.Lock(loop=loop)
+            self.tx_queue = Queue()
+            self.rx_queue = Queue()
+            self.tx_event = Event()
+            self.rx_event = Event()
+            self._thread = SqliteThread(
+                self.tx_queue,
+                self.rx_queue,
+                self.tx_event,
+                self.rx_event
+            )
+            self._thread.start()
+        else:
+            self._thread = None
 
     # def __enter__(self):
     #     """
@@ -87,20 +106,58 @@ class Connection:
             log_fun = getattr(logger, level)
             log_fun(message, *args)
 
+    @asyncio.coroutine
     def _execute(self, func, *args, **kwargs):
         """
         把同步转为async运行
         """
         func = partial(func, *args, **kwargs)
-        future = self._loop.run_in_executor(self._executor, func)
+        if self._check_same_thread:
+            future = yield from self._async_thread_execute(func)
+        else:
+            future = yield from self._loop.run_in_executor(self._executor, func)
         return future
+
+    @asyncio.coroutine
+    def _close_thread(self):
+        future = yield from self._async_thread_execute('close')
+        self._threading = False
+        self._thread = None
+        return future
+
+    @asyncio.coroutine
+    def _async_thread_execute(self, func):
+        """
+        通过asyncio的锁每次只执行一个
+        """
+        # yield from self._thread_lock.acquire()
+        with (yield from self._thread_lock):
+        # with (yield from ):
+            func = partial(self._thread_execute, func)
+            future = yield from self._loop.run_in_executor(self._executor, func)
+        # self._thread_lock.release()
+        return future
+
+    def _thread_execute(self, func):
+        """
+        通知线程执行任务
+        """
+        self.tx_queue.put(func)
+        self.tx_event.set()
+        self.rx_event.wait()
+        self.rx_event.clear()
+        result = self.rx_queue.get_nowait()
+        # self._thread_lock.release()
+        if isinstance(result, Exception): # pragma: no cover
+            raise result
+        return result
 
     @asyncio.coroutine
     def _connect(self):
         """
         async连接，必须使用多线程模式
         """
-        func = self._execute(
+        func = yield from self._execute(
             sqlite3.connect,
             self._database,
             timeout=self._timeout,
@@ -108,7 +165,7 @@ class Connection:
             check_same_thread=self._check_same_thread,
             **self._kwargs
         )
-        self._conn = yield from func
+        self._conn = func
         self._log(
             'debug',
             'connect-> "%s" ok',
@@ -159,23 +216,41 @@ class Connection:
 
     @isolation_level.setter
     def isolation_level(self, value: str) -> None:
-        self._conn.isolation_level = value
+        if self._check_same_thread:
+            func = partial(self._sync_setter, 'isolation_level', value)
+            self._thread_execute(func)
+        else:
+            self._conn.isolation_level = value
 
     @property
     def row_factory(self):
         return self._conn.row_factory
+    
+    def _sync_setter(self, field, value):
+        """
+        同步设置属性
+        """
+        setattr(self._conn, field, value)
 
     @row_factory.setter
     def row_factory(self, value):
-        self._conn.row_factory = value
+        if self._check_same_thread:
+            func = partial(self._sync_setter, 'row_factory', value)
+            self._thread_execute(func)
+        else:
+            self._conn.row_factory = value
 
     @property
     def text_factory(self):
-        return self._conn.text_factory
+            return self._conn.text_factory
 
     @text_factory.setter
     def text_factory(self, value):
-        self._conn.text_factory = value
+        if self._check_same_thread:
+            func = partial(self._sync_setter, 'text_factory', value)
+            self._thread_execute(func)
+        else:
+            self._conn.text_factory = value
 
     # @asyncio.coroutine
     # def _cursor(self):
@@ -213,6 +288,8 @@ class Connection:
             return
         res = yield from self._execute(self._conn.close)
         self._conn = None
+        if self._check_same_thread:
+            yield from self._close_thread()
         self._log(
             'debug',
             'close-> "%s" ok',
@@ -278,6 +355,25 @@ class Connection:
             sql_script
         )
         return self._create_context_cursor(coro)
+
+    def __del__(self):
+        """
+        关闭连接清理线程
+        """
+        if self._conn:
+            if self._check_same_thread:
+                self._thread_execute(self._conn.close)
+            else:
+                self._conn.close()
+            self._conn = None
+            self._log(
+                'debug',
+                '__del__ close-> "%s" ok',
+                self._database
+            )
+        if self._thread:
+            self._thread_execute('close')
+            self._thread = None
 
 
 def connect(
