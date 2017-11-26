@@ -54,6 +54,7 @@ class Connection:
             echo=False,
             check_same_thread=False,
             isolation_level='',
+            sqlite=sqlite3,
             **kwargs
     ):
         if check_same_thread:
@@ -61,6 +62,7 @@ class Connection:
                 'check_same_thread not is False -> %s'
                 % check_same_thread
             )
+        self._sqlite = sqlite
         self._database = database
         self._loop = loop or asyncio.get_event_loop()
         self._kwargs = kwargs
@@ -158,7 +160,7 @@ class Connection:
         async连接，必须使用多线程模式
         """
         func = yield from self._execute(
-            sqlite3.connect,
+            self._sqlite.connect,
             self._database,
             timeout=self._timeout,
             isolation_level=self._isolation_level,
@@ -355,6 +357,12 @@ class Connection:
             sql_script
         )
         return self._create_context_cursor(coro)
+
+    def sync_close(self):
+        """
+        同步关闭连接
+        """
+        self.__del__()
 
     def __del__(self):
         """

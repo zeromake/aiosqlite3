@@ -16,8 +16,10 @@ pytest-sugar = "*"
 pytest-cov = "*"
 codecov = "*"
 pytest-asyncio = "*"
+sqlalchemy = "*"
+"pysqlcipher3" = "*"
 
 
 [requires]
 
-python_version = ">=3.0"
+python_version = "3.6"

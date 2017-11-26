@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3897aabe87011c6b1da75eae1091ab5b54b0cd875e085fce05f7b5bd9ed42d7a"
+            "sha256": "4d62bdea754a000c221db0ee5731b05293a5d289b620b5f01a33447df1f9f5aa"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -9,21 +9,21 @@
             "os_name": "posix",
             "platform_machine": "x86_64",
             "platform_python_implementation": "CPython",
-            "platform_release": "4.13.14-2-MANJARO",
+            "platform_release": "4.13.12-1-ARCH",
             "platform_system": "Linux",
-            "platform_version": "#1 SMP PREEMPT Sat Nov 18 14:25:40 UTC 2017",
+            "platform_version": "#1 SMP PREEMPT Wed Nov 8 11:54:06 CET 2017",
             "python_full_version": "3.6.3",
             "python_version": "3.6",
             "sys_platform": "linux"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.6"
+            "python_version": "3.5"
         },
         "sources": [
             {
                 "name": "pypi",
-                "url": "https://pypi.doubanio.com/simple/",
+                "url": "https://mirrors.aliyun.com/pypi/simple/",
                 "verify_ssl": true
             }
         ]
@@ -54,6 +54,10 @@
             "hashes": [],
             "version": "==1.5.2"
         },
+        "pysqlcipher3": {
+            "hashes": [],
+            "version": "==1.0.2"
+        },
         "pytest": {
             "hashes": [],
             "version": "==3.2.5"
@@ -73,6 +77,10 @@
         "requests": {
             "hashes": [],
             "version": "==2.18.4"
+        },
+        "sqlalchemy": {
+            "hashes": [],
+            "version": "==1.1.15"
         },
         "termcolor": {
             "hashes": [],

@@ -13,6 +13,23 @@ else: # pragma: no cover
     base = object
 
 
+def create_future(loop):
+    """Compatibility wrapper for the loop.create_future() call introduced in
+    3.5.2."""
+    if hasattr(loop, 'create_future'):
+        return loop.create_future()
+    else:
+        return asyncio.Future(loop=loop)
+
+def create_task(coro, loop):
+    """Compatibility wrapper for the loop.create_task() call introduced in
+    3.4.2."""
+    if hasattr(loop, 'create_task'):
+        return loop.create_task(coro)
+    else:
+        return asyncio.Task(coro, loop=loop)
+
+
 class _ContextManager(base):
     __slots__ = ('_coro', '_obj')
 
@@ -158,6 +175,27 @@ if not PY_35: # pragma: no cover
 else:
     pass
 
+
+class _SAConnectionContextManager(_ContextManager):
+    if PY_35:  # pragma: no branch
+        @asyncio.coroutine
+        def __aiter__(self):
+            result = yield from self._coro
+            return result
+class _TransactionContextManager(_ContextManager):
+
+    if PY_35:  # pragma: no branch
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            print('----transaction close-----')
+            if exc_type:
+                yield from self._obj.rollback()
+            else:
+                if self._obj.is_active:
+                    yield from self._obj.commit()
+            yield from self._obj.close()
+            self._obj = None
 
 def delegate_to_executor(bind_attr, attrs):
     """

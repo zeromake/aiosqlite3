@@ -146,6 +146,16 @@ class Pool(asyncio.AbstractServer):
             return
         self._closing = True
 
+    def terminate(self):
+        """
+        Terminate pool
+        """
+        self.close()
+        for conn in self._used:
+            conn.sync_close()
+            self._terminated.add(conn)
+        self._used.clear()
+
     @asyncio.coroutine
     def wait_closed(self):
         """
@@ -161,11 +171,38 @@ class Pool(asyncio.AbstractServer):
 
         while self._free:
             conn = self._free.popleft()
-            yield from conn.close()
+            if not conn.closed:
+                yield from conn.close()
 
         with (yield from self._cond):
             while self.size > self.freesize:
                 yield from self._cond.wait()
+
+        for conn in self._used:
+            if not conn.closed:
+                yield from conn.close()
+            self._terminated.add(conn)
+        self._used.clear()
+
+        self._closed = True
+    
+    def sync_close(self):
+        if self._closed:
+            return
+        if not self._closing:
+            raise RuntimeError(
+                ".wait_closed() should be called "
+                "after .close()"
+            )
+
+        while self._free:
+            conn = self._free.popleft()
+            conn.sync_close()
+
+        for conn in self._used:
+            conn.sync_close()
+            self._terminated.add(conn)
+        self._used.clear()
 
         self._closed = True
 
@@ -202,6 +239,7 @@ class Pool(asyncio.AbstractServer):
         while self.size < self.minsize:
             self._acquiring += 1
             try:
+                logger.debug('fill_free_pool minsize creact connect size: %d', self.size)
                 conn = yield from connect(
                     database=self._database,
                     echo=self._echo,
@@ -218,6 +256,7 @@ class Pool(asyncio.AbstractServer):
         if override_min and self.size < self.maxsize:
             self._acquiring += 1
             try:
+                logger.debug('fill_free_pool maxsize creact connect size: %d', self.size)
                 conn = yield from connect(
                     database=self._database,
                     echo=self._echo,
@@ -247,6 +286,13 @@ class Pool(asyncio.AbstractServer):
             else:
                 self._free.append(conn)
             yield from self._wakeup()
+
+    def __del__(self):
+        """
+        回收连接
+        """
+        self.sync_close()
+        self._loop = None
 
     if PY_35:
         @asyncio.coroutine
