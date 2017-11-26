@@ -1,6 +1,6 @@
 # aiosqlite3
 
-[![Travis Build Status](https://www.travis-ci.org/zeromake/aiosqlite3.svg?branch=master)](https://www.travis-ci.org/zeromake/aiosqlite3.svg?branch=master)
+[![Travis Build Status](https://www.travis-ci.org/zeromake/aiosqlite3.svg?branch=master)](https://www.travis-ci.org/zeromake/aiosqlite3)
 [![codecov](https://codecov.io/gh/zeromake/aiosqlite3/branch/master/graph/badge.svg)](https://codecov.io/gh/zeromake/aiosqlite3)
 
 ## Basic Example
