@@ -247,13 +247,29 @@ async def test_connect_context_manager(loop, db):
 @pytest.mark.asyncio
 async def test_connect_check_same_thread(loop, db):
     """
-    测试同步错误
+    测试同步
     """
     async with aiosqlite3.connect(db, loop=loop, check_same_thread=True) as conn:
         async with conn.cursor() as cursor:
             await cursor.execute('SELECT 42;')
             res = await cursor.fetchone()
             assert res == (42,)
+    conn = await aiosqlite3.connect(db, loop=loop, check_same_thread=True)
+    assert conn._thread
+    await conn.close()
+    assert conn._thread is None
+    with pytest.raises(TypeError):
+        cursor = await conn.execute('SELECT 42;')
+
+@pytest.mark.asyncio
+@asyncio.coroutine
+def test_connect_execute_error(db, loop):
+    """
+    测试错误
+    """
+    conn = yield from aiosqlite3.connect(db, loop=loop, check_same_thread=True)
+    with pytest.raises(aiosqlite3.OperationalError):
+        yield from conn.execute('sdfd')
 
 # def test_connect_context_sync_manager(conn):
 #     """

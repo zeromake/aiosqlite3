@@ -9,7 +9,7 @@ build: flake test
 	python setup.py bdist_wheel
 
 test:
-	pytest --cov=aiosqlite3 -v
+	pytest -s -v --cov-report term --cov=aiosqlite3
 
 cov cover coverage:
 	py.test -s -v --cov-report term --cov-report html --cov aiosqlite3 ./tests

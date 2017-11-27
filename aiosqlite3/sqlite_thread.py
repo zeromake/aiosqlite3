@@ -18,12 +18,13 @@ class SqliteThread(Thread):
             self._tx_event.wait()
             self._tx_event.clear()
             try:
-                func = self._tx_queue.get(timeout=0.1)
+                func = self._tx_queue.get_nowait()
                 if isinstance(func, str):
                     self._stoped = True
                     self._rx_queue.put('closed')
+                    self.notice()
                     break
-            except Empty:
+            except Empty: # pragma: no cover
                 continue
             try:
                 result = func()
@@ -31,13 +32,24 @@ class SqliteThread(Thread):
             except Exception as e:
                 self._rx_queue.put(e)
             self.notice()
-        self.notice()
+        else: # pragma: no cover
+            pass
 
     def notice(self):
         """
         通知主线程处理
         """
         self._rx_event.set()
+
+    def __del__(self):
+        """
+        回收引用
+        """
+        self._tx_event = None
+        self._rx_event = None
+        self._tx_queue = None
+        self._rx_queue = None
+
 
 
 if __name__ == '__main__': # pragma: no cover

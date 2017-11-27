@@ -37,6 +37,22 @@ def conn(loop, db):
     loop.run_until_complete(connection.close())
 
 @pytest.fixture
+def make_conn(loop, db):
+    """
+    创建一个连接方法
+    """
+    conns = []
+    @asyncio.coroutine
+    def go(**kwargs):
+        conn = yield from aiosqlite3.connect(database=db, loop=loop, echo=True, **kwargs)
+        conns.append(conn)
+        return conn
+    yield go
+    for conn in conns:
+        if not conn.closed:
+            loop.run_until_complete(conn.close())
+
+@pytest.fixture
 def db():
     return ':memory:'
 

@@ -318,14 +318,16 @@ class ResultProxy:
             # allow consistent errors
             self._cursor = None
             self._weak = None
+        else: # pragma: no cover
+            pass
 
-    def __iter__(self):
-        while True:
-            row = yield from self.fetchone()
-            if row is None:
-                raise StopIteration
-            else:
-                yield row
+    # def __iter__(self):
+    #     while True:
+    #         row = yield from self.fetchone()
+    #         if row is None:
+    #             raise StopIteration
+    #         else:
+    #             yield row
 
     def _non_result(self):
         if self._metadata is None:
@@ -415,7 +417,7 @@ class ResultProxy:
         else:
             return None
 
-    if PY_35:  # pragma: no branch
+    if PY_35:
         @asyncio.coroutine
         def __aiter__(self):
             return self
@@ -427,3 +429,6 @@ class ResultProxy:
                 return data
             else:
                 raise StopAsyncIteration # noqa
+    else: # pragma: no cover
+        pass
+

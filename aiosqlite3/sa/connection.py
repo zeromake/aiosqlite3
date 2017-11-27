@@ -11,7 +11,7 @@ from . import exc
 from .result import create_result_proxy
 from .transaction import (RootTransaction, Transaction,
                           NestedTransaction, TwoPhaseTransaction)
-from ..utils import _TransactionContextManager, _SAConnectionContextManager
+from ..utils import PY_35, _TransactionContextManager, _SAConnectionContextManager
 
 
 class SAConnection:
@@ -352,13 +352,26 @@ class SAConnection:
         self._connection = None
         self._engine = None
 
-    @asyncio.coroutine
-    def __aenter__(self):
-        return self
+    def __del__(self):
+        """
+        清理引用
+        """
+        self._connection = None
+        self._engine = None
+        self._transaction = None
+        self._weak_results = None
+        self._dialect = None
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_val, exc_tb):
-        yield from self.close()
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            yield from self.close()
+    else: # pragma: no cover
+        pass
 
 
 def _distill_params(multiparams, params):

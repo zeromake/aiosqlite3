@@ -39,18 +39,6 @@ class Cursor:
         self._executor = None
         self._closed = False
 
-    # def __enter__(self):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     return self
-
-    # def __exit__(self, exc_type, exc, tbs):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     self._loop.run_until_complete(self.close())
-
     def _log(self, level, message, *args):
         """
         日志处理
@@ -163,7 +151,15 @@ class Cursor:
         if not self._closed:
             yield from self._execute(self._cursor.close)
             self._closed = True
-    
+
+    def __del__(self):
+        """
+        回收引用
+        """
+        self._conn = None
+        self._cursor = None
+        self._loop = None
+
     if PY_35:
         @asyncio.coroutine
         def __aiter__(self):

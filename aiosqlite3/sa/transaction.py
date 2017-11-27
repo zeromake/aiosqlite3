@@ -91,10 +91,16 @@ class Transaction(object):
     def _do_commit(self):
         pass
 
-    if PY_35:  # pragma: no branch
+    def __del__(self):
+        """
+        回收引用
+        """
+        self._connection = None
+        self._parent = None
+
+    if PY_35:
         @asyncio.coroutine
         def __aenter__(self):
-            print('----transaction __aenter__-----')
             return self
 
         @asyncio.coroutine
@@ -105,6 +111,8 @@ class Transaction(object):
                 if self._is_active:
                     yield from self.commit()
             yield from self.close()
+    else: # pragma: no cover
+        pass
 
 
 class RootTransaction(Transaction):

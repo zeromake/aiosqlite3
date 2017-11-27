@@ -59,8 +59,7 @@ class Connection:
     ):
         if check_same_thread:
             logger.warn(
-                'check_same_thread not is False -> %s'
-                % check_same_thread
+                'check_same_thread is True sqlite on one Thread run'
             )
         self._sqlite = sqlite
         self._database = database
@@ -72,6 +71,7 @@ class Connection:
         self._isolation_level = isolation_level
         self._check_same_thread = check_same_thread
         self._conn = None
+        self._closed = False
         if check_same_thread:
             self._thread_lock = asyncio.Lock(loop=loop)
             self.tx_queue = Queue()
@@ -113,6 +113,8 @@ class Connection:
         """
         把同步转为async运行
         """
+        if self._closed:
+            raise TypeError('connection is close')
         func = partial(func, *args, **kwargs)
         if self._check_same_thread:
             future = yield from self._async_thread_execute(func)
@@ -132,12 +134,9 @@ class Connection:
         """
         通过asyncio的锁每次只执行一个
         """
-        # yield from self._thread_lock.acquire()
         with (yield from self._thread_lock):
-        # with (yield from ):
             func = partial(self._thread_execute, func)
             future = yield from self._loop.run_in_executor(self._executor, func)
-        # self._thread_lock.release()
         return future
 
     def _thread_execute(self, func):
@@ -149,7 +148,6 @@ class Connection:
         self.rx_event.wait()
         self.rx_event.clear()
         result = self.rx_queue.get_nowait()
-        # self._thread_lock.release()
         if isinstance(result, Exception): # pragma: no cover
             raise result
         return result
@@ -198,9 +196,7 @@ class Connection:
         """
         是否已关闭连接
         """
-        if self._conn:
-            return False
-        return True
+        return self._closed
 
     @property
     def autocommit(self):
@@ -254,14 +250,6 @@ class Connection:
         else:
             self._conn.text_factory = value
 
-    # @asyncio.coroutine
-    # def _cursor(self):
-    #     """
-    #     获取异步代理cursor对象
-    #     """
-    #     cursor = yield from self._execute(self._conn.cursor)
-    #     return self._create_cursor(cursor)
-
     def _create_cursor(self, cursor):
         """
         创建代理cursor
@@ -286,12 +274,13 @@ class Connection:
         """
         关闭
         """
-        if not self._conn:
+        if self._closed:
             return
         res = yield from self._execute(self._conn.close)
-        self._conn = None
         if self._check_same_thread:
             yield from self._close_thread()
+            self._thread = None
+        self._closed = True
         self._log(
             'debug',
             'close-> "%s" ok',
@@ -368,20 +357,33 @@ class Connection:
         """
         关闭连接清理线程
         """
-        if self._conn:
+        if not self._closed:
             if self._check_same_thread:
-                self._thread_execute(self._conn.close)
+                if self._thread:
+                    self._thread_execute(self._conn.close)
+                    self._thread_execute('close')
+                    self._thread = None
+                    self._thread_lock = None
+                    self.tx_queue = None
+                    self.rx_queue = None
+                    self.tx_event = None
+                    self.rx_event = None
+                else: # pragma: no cover
+                    pass
             else:
                 self._conn.close()
             self._conn = None
+            self._sqlite = None
+            self._database = None
+            self._loop = None
+            self._kwargs = None
+            self._executor = None
+            self._closed = True
             self._log(
                 'debug',
                 '__del__ close-> "%s" ok',
                 self._database
             )
-        if self._thread:
-            self._thread_execute('close')
-            self._thread = None
 
 
 def connect(

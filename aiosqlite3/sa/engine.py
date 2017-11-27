@@ -21,8 +21,8 @@ except ImportError:  # pragma: no cover
 # format      ANSI C printf format codes, e.g. ...WHERE name=%s
 # pyformat 	  Python extended format codes, e.g. ...WHERE name=%(name)s
 
-# _dialect = SQLiteDialect_pysqlite(paramstyle='pyformat')
-# _dialect.default_paramstyle = 'pyformat'
+_dialect = SQLiteDialect_pysqlite(paramstyle='named')
+_dialect.default_paramstyle = 'named'
 
 
 def create_engine(
@@ -30,8 +30,8 @@ def create_engine(
         minsize=1,
         maxsize=10,
         loop=None,
-        dialect=None,
-        paramstyle='named',
+        dialect=_dialect,
+        paramstyle=None,
         **kwargs
     ):
     """
@@ -59,8 +59,8 @@ def _create_engine(
         minsize=1,
         maxsize=10,
         loop=None,
-        dialect=None,
-        paramstyle='named',
+        dialect=_dialect,
+        paramstyle=None,
         **kwargs
     ):
     if loop is None:
@@ -89,8 +89,8 @@ class Engine:
     create_engine coroutine.
     """
 
-    def __init__(self, dialect=None, pool=None, paramstyle='named', **kwargs):
-        if dialect is None:
+    def __init__(self, dialect=_dialect, pool=None, paramstyle=None, **kwargs):
+        if paramstyle:
             dialect = SQLiteDialect_pysqlite(paramstyle=paramstyle)
             dialect.default_paramstyle = paramstyle
         self._dialect = dialect
@@ -197,12 +197,13 @@ class Engine:
         """
         处理关闭
         """
-        print('------engine del------')
         self.close()
         self._pool.sync_close()
+        self._dialect = None
         self._pool = None
+        self._conn_kw = None
 
-    if PY_35:  # pragma: no branch
+    if PY_35:
         @asyncio.coroutine
         def __aenter__(self):
             return self
@@ -211,6 +212,8 @@ class Engine:
         def __aexit__(self, exc_type, exc_val, exc_tb):
             self.close()
             yield from self.wait_closed()
+    else: # pragma: no cover
+        pass
 
 
 _EngineContextManager = _PoolContextManager

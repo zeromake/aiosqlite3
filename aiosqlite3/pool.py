@@ -72,8 +72,10 @@ class Pool(asyncio.AbstractServer):
             **kwargs
     ):
         if minsize < 0:
+            self._closed = True
             raise ValueError("minsize should be zero or greater")
         if maxsize < minsize:
+            self._closed = True
             raise ValueError("maxsize should be not less than minsize")
         self._database = database
         self._minsize = minsize
@@ -87,19 +89,6 @@ class Pool(asyncio.AbstractServer):
         self._closing = False
         self._closed = False
         self._echo = echo
-
-    # def __enter__(self):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     return self
-
-    # def __exit__(self, exc_type, exc, tbs):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     self.close()
-    #     self._loop.run_until_complete(self.wait_closed())
 
     @property
     def echo(self):
@@ -146,7 +135,7 @@ class Pool(asyncio.AbstractServer):
             return
         self._closing = True
 
-    def terminate(self):
+    def terminate(self): # pragma: no cover
         """
         Terminate pool
         """
@@ -173,6 +162,8 @@ class Pool(asyncio.AbstractServer):
             conn = self._free.popleft()
             if not conn.closed:
                 yield from conn.close()
+            else: # pragma: no cover
+                pass
 
         with (yield from self._cond):
             while self.size > self.freesize:
@@ -181,6 +172,8 @@ class Pool(asyncio.AbstractServer):
         for conn in self._used:
             if not conn.closed:
                 yield from conn.close()
+            else: # pragma: no cover
+                pass
             self._terminated.add(conn)
         self._used.clear()
 
@@ -194,13 +187,16 @@ class Pool(asyncio.AbstractServer):
                 ".wait_closed() should be called "
                 "after .close()"
             )
-
         while self._free:
             conn = self._free.popleft()
-            conn.sync_close()
+            if not conn.closed:
+                conn.sync_close()
 
         for conn in self._used:
-            conn.sync_close()
+            if not conn.closed:
+                conn.sync_close()
+            else: # pragma: no cover
+                pass
             self._terminated.add(conn)
         self._used.clear()
 
@@ -239,7 +235,6 @@ class Pool(asyncio.AbstractServer):
         while self.size < self.minsize:
             self._acquiring += 1
             try:
-                logger.debug('fill_free_pool minsize creact connect size: %d', self.size)
                 conn = yield from connect(
                     database=self._database,
                     echo=self._echo,
@@ -256,7 +251,6 @@ class Pool(asyncio.AbstractServer):
         if override_min and self.size < self.maxsize:
             self._acquiring += 1
             try:
-                logger.debug('fill_free_pool maxsize creact connect size: %d', self.size)
                 conn = yield from connect(
                     database=self._database,
                     echo=self._echo,
@@ -291,6 +285,7 @@ class Pool(asyncio.AbstractServer):
         """
         回收连接
         """
+        self.close()
         self.sync_close()
         self._loop = None
 

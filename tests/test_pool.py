@@ -258,11 +258,20 @@ def test_concurrency(loop, pool_maker, db):
 @asyncio.coroutine
 def test_invalid_minsize_and_maxsize(loop, db):
     with pytest.raises(ValueError):
-        yield from aiosqlite3.create_pool(database=db, loop=loop, minsize=-1)
+        yield from aiosqlite3.create_pool(
+            database=db,
+            loop=loop,
+            minsize=-1
+        )
 
     with pytest.raises(ValueError):
-        yield from aiosqlite3.create_pool(database=db, loop=loop, minsize=5,
-                                  maxsize=2)
+        yield from aiosqlite3.create_pool(
+            database=db,
+            loop=loop,
+            minsize=5,
+            maxsize=2
+        )
+
 
 
 @pytest.mark.asyncio
@@ -454,41 +463,15 @@ async def test_all_context_managers(db, loop, executor):
     assert pool.closed
     assert conn.closed
     assert cur.closed
-# @pytest.mark.asyncio
-# @asyncio.coroutine
-# def test_pool_context_manager(loop, pool):
-#     assert not pool.closed
-#     with pool:
-#         assert not pool.closed
-#     assert pool.closed
 
-
-# @pytest.mark.asyncio
-# @asyncio.coroutine
-# def test_pool_context_manager2(loop, pool):
-#     with (yield from pool.acquire()) as conn:
-#         assert not conn.closed
-#         cur = yield from conn.cursor()
-#         yield from cur.execute('SELECT 1')
-#         val = yield from cur.fetchone()
-#         assert (1,) == tuple(val)
-
-
-#     @pytest.mark.asyncio
-#     @asyncio.coroutine
-#     def test_all_context_managers(db, loop, executor):
-#         kw = dict(database=db, loop=loop, executor=executor)
-#         with (yield from aiosqlite3.create_pool(**kw)) as pool:
-#             with (yield from pool.acquire()) as conn:
-#                 with (yield from conn.cursor()) as cur:
-#                     assert not pool.closed
-#                     assert not conn.closed
-#                     assert not cur.closed
-
-#                     yield from cur.execute('SELECT 1')
-#                     val = yield from cur.fetchone()
-#                     assert (1,) == tuple(val)
-
-#         assert pool.closed
-#         assert conn.closed
-#         assert cur.closed
+@pytest.mark.asyncio
+@asyncio.coroutine
+def test_pool_del(db, loop):
+    """
+    测试内存回收
+    """
+    @asyncio.coroutine
+    def make():
+        pool = yield from aiosqlite3.create_pool(database=db, loop=loop)
+        conn = yield from pool.acquire()
+    yield from make()
