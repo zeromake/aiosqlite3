@@ -140,7 +140,6 @@ async def test_connect_executescript(db):
     cursor = await conn.execute('SELECT * FROM student')
     index = 1
     async for resp in cursor:
-        print(resp)
         assert resp == (index, str(index))
         index += 1
 

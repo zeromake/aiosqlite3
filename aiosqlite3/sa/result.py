@@ -16,7 +16,6 @@ def create_result_proxy(connection, cursor, dialect):
     yield from result_proxy._prepare()
     return result_proxy
 
-
 class RowProxy(Mapping):
 
     __slots__ = ('_result_proxy', '_row', '_processors', '_keymap')
@@ -416,6 +415,14 @@ class ResultProxy:
             return row[0]
         else:
             return None
+
+    def __del__(self):
+        """
+        回收
+        """
+        self._dialect = None
+        self._cursor = None
+        self._connection = None
 
     if PY_35:
         @asyncio.coroutine

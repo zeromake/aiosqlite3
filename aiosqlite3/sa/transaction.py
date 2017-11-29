@@ -41,12 +41,15 @@ class Transaction(object):
 
     @property
     def connection(self):
-        """Return transaction's connection (SAConnection instance)."""
+        """
+        Return transaction's connection (SAConnection instance).
+        """
         return self._connection
 
     @asyncio.coroutine
     def close(self):
-        """Close this transaction.
+        """
+        Close this transaction.
 
         If this transaction is the base transaction in a begin/commit
         nesting, the transaction will rollback().  Otherwise, the
@@ -55,7 +58,9 @@ class Transaction(object):
         This is used to cancel a Transaction without affecting the scope of
         an enclosing transaction.
         """
-        if not self._parent._is_active:
+        if not self._connection or not self._parent:
+            return
+        if not self._parent._is_active: # pragma: no cover
             self._connection = None
             # self._parent = None
             return
@@ -68,7 +73,9 @@ class Transaction(object):
 
     @asyncio.coroutine
     def rollback(self):
-        """Roll back this transaction."""
+        """
+        Roll back this transaction.
+        """
         if not self._parent._is_active:
             return
         yield from self._do_rollback()
@@ -80,7 +87,9 @@ class Transaction(object):
 
     @asyncio.coroutine
     def commit(self):
-        """Commit this transaction."""
+        """
+        Commit this transaction.
+        """
 
         if not self._parent._is_active:
             raise exc.InvalidRequestError("This transaction is inactive")
@@ -98,21 +107,21 @@ class Transaction(object):
         self._connection = None
         self._parent = None
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            return self
+    # if PY_35:
+    #     @asyncio.coroutine
+    #     def __aenter__(self):
+    #         return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_val, exc_tb):
-            if exc_type:
-                yield from self.rollback()
-            else:
-                if self._is_active:
-                    yield from self.commit()
-            yield from self.close()
-    else: # pragma: no cover
-        pass
+    #     @asyncio.coroutine
+    #     def __aexit__(self, exc_type, exc_val, exc_tb):
+    #         if exc_type:
+    #             yield from self.rollback()
+    #         else:
+    #             if self._is_active:
+    #                 yield from self.commit()
+    #         yield from self.close()
+    # else: # pragma: no cover
+    #     pass
 
 
 class RootTransaction(Transaction):
@@ -130,7 +139,8 @@ class RootTransaction(Transaction):
 
 
 class NestedTransaction(Transaction):
-    """Represent a 'nested', or SAVEPOINT transaction.
+    """
+    Represent a 'nested', or SAVEPOINT transaction.
 
     A new NestedTransaction object may be procured
     using the SAConnection.begin_nested() method.
@@ -156,46 +166,3 @@ class NestedTransaction(Transaction):
         if self._is_active:
             yield from self._connection._release_savepoint_impl(
                 self._savepoint, self._parent)
-
-
-class TwoPhaseTransaction(Transaction):
-    """Represent a two-phase transaction.
-
-    A new TwoPhaseTransaction object may be procured
-    using the SAConnection.begin_twophase() method.
-
-    The interface is the same as that of Transaction class
-    with the addition of the .prepare() method.
-    """
-
-    def __init__(self, connection, xid):
-        super().__init__(connection, None)
-        self._is_prepared = False
-        self._xid = xid
-
-    @property
-    def xid(self):
-        """Returns twophase transaction id."""
-        return self._xid
-
-    @asyncio.coroutine
-    def prepare(self):
-        """Prepare this TwoPhaseTransaction.
-
-        After a PREPARE, the transaction can be committed.
-        """
-
-        if not self._parent.is_active:
-            raise exc.InvalidRequestError("This transaction is inactive")
-        yield from self._connection._prepare_twophase_impl(self._xid)
-        self._is_prepared = True
-
-    @asyncio.coroutine
-    def _do_rollback(self):
-        yield from self._connection.rollback_prepared(
-            self._xid, is_prepared=self._is_prepared)
-
-    @asyncio.coroutine
-    def _do_commit(self):
-        yield from self._connection.commit_prepared(
-            self._xid, is_prepared=self._is_prepared)

@@ -168,35 +168,31 @@ class Pool(asyncio.AbstractServer):
         with (yield from self._cond):
             while self.size > self.freesize:
                 yield from self._cond.wait()
-
-        for conn in self._used:
-            if not conn.closed:
-                yield from conn.close()
-            else: # pragma: no cover
-                pass
-            self._terminated.add(conn)
+        # for conn in self._used:
+        #     if not conn.closed:
+        #         yield from conn.close()
+        #     else: # pragma: no cover
+        #         pass
+        #     self._terminated.add(conn)
         self._used.clear()
-
         self._closed = True
-    
+
     def sync_close(self):
         if self._closed:
             return
-        if not self._closing:
-            raise RuntimeError(
-                ".wait_closed() should be called "
-                "after .close()"
-            )
+        # if not self._closing:
+        #     raise RuntimeError(
+        #         ".wait_closed() should be called "
+        #         "after .close()"
+        #     )
         while self._free:
             conn = self._free.popleft()
-            if not conn.closed:
+            if not conn.closed: # pragma: no cover 
                 conn.sync_close()
 
         for conn in self._used:
-            if not conn.closed:
+            if not conn.closed: # pragma: no cover
                 conn.sync_close()
-            else: # pragma: no cover
-                pass
             self._terminated.add(conn)
         self._used.clear()
 

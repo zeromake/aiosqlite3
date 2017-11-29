@@ -9,8 +9,11 @@ from sqlalchemy.sql.ddl import DDLElement
 
 from . import exc
 from .result import create_result_proxy
-from .transaction import (RootTransaction, Transaction,
-                          NestedTransaction, TwoPhaseTransaction)
+from .transaction import (
+    RootTransaction,
+    Transaction,
+    NestedTransaction
+)
 from ..utils import PY_35, _TransactionContextManager, _SAConnectionContextManager
 
 
@@ -84,7 +87,7 @@ class SAConnection:
                     if isinstance(query, UpdateBase):
                         dp = {c.key: pval
                               for c, pval in zip(query.table.c, dp)}
-                    else:
+                    else: # pragma: no cover
                         raise exc.ArgumentError(
                             "Don't mix sqlalchemy SELECT "
                             "clause with positional "
@@ -104,12 +107,13 @@ class SAConnection:
                     processed_parameters)
                 # compiled = query
             else:
-                if dp:
+                if dp: # pragma: no cover
                     raise exc.ArgumentError(
                         "Don't mix sqlalchemy DDL clause "
                         "and execution with parameters"
                     )
                 post_processed_params = [compiled.construct_params()]
+            # print(str(compiled), post_processed_params[0])
             yield from cursor.execute(str(compiled), post_processed_params[0])
         else:
             raise exc.ArgumentError(
@@ -194,6 +198,7 @@ class SAConnection:
     def _commit_impl(self):
         try:
             yield from self._connection.commit()
+            # yield from self._connection.execute('COMMIT')
         finally:
             self._transaction = None
         # cur = yield from self._connection.cursor()
@@ -203,9 +208,9 @@ class SAConnection:
         #     yield from cur.close()
         #     self._transaction = None
     
-    @asyncio.coroutine
-    def rollback(self):
-        self._rollback_impl()
+    # @asyncio.coroutine
+    # def rollback(self):
+    #     self._rollback_impl()
 
     @asyncio.coroutine
     def _rollback_impl(self):
@@ -270,56 +275,6 @@ class SAConnection:
             yield from cur.close()
         self._transaction = parent
 
-    @asyncio.coroutine
-    def begin_twophase(self, xid=None):
-        """Begin a two-phase or XA transaction and return a transaction
-        handle.
-
-        The returned object is an instance of
-        TwoPhaseTransaction, which in addition to the
-        methods provided by Transaction, also provides a
-        TwoPhaseTransaction.prepare() method.
-
-        xid - the two phase transaction id.  If not supplied, a
-        random id will be generated.
-        """
-
-        if self._transaction is not None:
-            raise exc.InvalidRequestError(
-                "Cannot start a two phase transaction when a transaction "
-                "is already in progress."
-            )
-        if xid is None:
-            xid = self._dialect.create_xid()
-        self._transaction = TwoPhaseTransaction(self, xid)
-        yield from self.execute("XA START %s", xid)
-        return self._transaction
-
-    @asyncio.coroutine
-    def _prepare_twophase_impl(self, xid):
-        yield from self.execute("XA END '%s'" % xid)
-        yield from self.execute("XA PREPARE '%s'" % xid)
-
-    @asyncio.coroutine
-    def recover_twophase(self):
-        """Return a list of prepared twophase transaction ids."""
-        result = yield from self.execute("XA RECOVER;")
-        return [row[0] for row in result]
-
-    @asyncio.coroutine
-    def rollback_prepared(self, xid, *, is_prepared=True):
-        """Rollback prepared twophase transaction."""
-        if not is_prepared:
-            yield from self.execute("XA END '%s'" % xid)
-        yield from self.execute("XA ROLLBACK '%s'" % xid)
-
-    @asyncio.coroutine
-    def commit_prepared(self, xid, *, is_prepared=True):
-        """Commit prepared twophase transaction."""
-        if not is_prepared:
-            yield from self.execute("XA END '%s'" % xid)
-        yield from self.execute("XA COMMIT '%s'" % xid)
-
     @property
     def in_transaction(self):
         """Return True if a transaction is in progress."""
@@ -362,16 +317,16 @@ class SAConnection:
         self._weak_results = None
         self._dialect = None
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            return self
+    # if PY_35:
+    #     @asyncio.coroutine
+    #     def __aenter__(self):
+    #         return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_val, exc_tb):
-            yield from self.close()
-    else: # pragma: no cover
-        pass
+    #     @asyncio.coroutine
+    #     def __aexit__(self, exc_type, exc_val, exc_tb):
+    #         yield from self.close()
+    # else: # pragma: no cover
+    #     pass
 
 
 def _distill_params(multiparams, params):

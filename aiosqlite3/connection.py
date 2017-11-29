@@ -374,6 +374,7 @@ class Connection:
                 self._conn.close()
             self._conn = None
             self._sqlite = None
+            database = self._database
             self._database = None
             self._loop = None
             self._kwargs = None
@@ -382,7 +383,7 @@ class Connection:
             self._log(
                 'debug',
                 '__del__ close-> "%s" ok',
-                self._database
+                database
             )
 
 

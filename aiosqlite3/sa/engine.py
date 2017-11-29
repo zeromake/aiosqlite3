@@ -1,7 +1,7 @@
 # ported from:
 # https://github.com/aio-libs/aiopg/blob/master/aiopg/sa/engine.py
 import asyncio
-
+import json
 import aiosqlite3
 from .connection import SAConnection
 from .exc import InvalidRequestError
@@ -21,9 +21,44 @@ except ImportError:  # pragma: no cover
 # format      ANSI C printf format codes, e.g. ...WHERE name=%s
 # pyformat 	  Python extended format codes, e.g. ...WHERE name=%(name)s
 
-_dialect = SQLiteDialect_pysqlite(paramstyle='named')
-_dialect.default_paramstyle = 'named'
+# _dialect = MySQLDialect_pymysql(paramstyle='named')
+# _dialect.default_paramstyle = 'named'
 
+SQLiteCompiler = SQLiteDialect_pysqlite.statement_compiler
+
+class ACompiler_sqlite(SQLiteCompiler):
+    """
+    让SQLite支持default
+    """
+    def construct_params(self, params=None, _group_number=None, _check=True):
+        compiler_params = super().construct_params(params, _group_number, _check)
+        for column in self.prefetch:
+            compiler_params[column.key] = self._exec_default(column.default)
+        return compiler_params
+
+    def _exec_default(self, default):
+        if default.is_callable:
+            return default.arg(self.dialect)
+        else:
+            return default.arg
+
+def json_deserializer(x): # pragma: no cover
+    return x
+
+def compiler_dialect(paramstyle='named'):
+    """
+    构建dialect
+    """
+    dialect = SQLiteDialect_pysqlite(
+        json_serializer=json.dumps,
+        json_deserializer=json_deserializer,
+        paramstyle=paramstyle
+    )
+    dialect.default_paramstyle = paramstyle
+    dialect.statement_compiler = ACompiler_sqlite
+    return dialect
+
+_dialect = compiler_dialect()
 
 def create_engine(
         database,
@@ -63,7 +98,7 @@ def _create_engine(
         paramstyle=None,
         **kwargs
     ):
-    if loop is None:
+    if loop is None: # pragma: no cover
         loop = asyncio.get_event_loop()
     pool = yield from aiosqlite3.create_pool(
         database=database,
@@ -76,7 +111,8 @@ def _create_engine(
     try:
         return Engine(dialect, pool, paramstyle=paramstyle, **kwargs)
     finally:
-        pool.release(conn)
+        # pass
+        yield from pool.release(conn)
 
 
 class Engine:
@@ -90,9 +126,8 @@ class Engine:
     """
 
     def __init__(self, dialect=_dialect, pool=None, paramstyle=None, **kwargs):
-        if paramstyle:
-            dialect = SQLiteDialect_pysqlite(paramstyle=paramstyle)
-            dialect.default_paramstyle = paramstyle
+        if paramstyle: # pragma: no cover
+            compiler_dialect(paramstyle)
         self._dialect = dialect
         self._pool = pool
         self._conn_kw = kwargs
@@ -146,7 +181,9 @@ class Engine:
 
     @asyncio.coroutine
     def wait_closed(self):
-        """Wait for closing all engine's connections."""
+        """
+        Wait for closing all engine's connections.
+        """
         yield from self._pool.wait_closed()
 
     def acquire(self):
@@ -160,17 +197,22 @@ class Engine:
         conn = SAConnection(raw, self)
         return conn
 
+    @asyncio.coroutine
     def release(self, conn):
         """Revert back connection to pool."""
         if conn.in_transaction:
-            raise InvalidRequestError("Cannot release a connection with "
-                                      "not finished transaction")
+            raise InvalidRequestError(
+                "Cannot release a connection with "
+                "not finished transaction"
+            )
         raw = conn.connection
-        return self._pool.release(raw)
+        res = yield from self._pool.release(raw)
+        return res
 
     def __enter__(self):
         raise RuntimeError(
-            '"yield from" should be used as context manager expression')
+            '"yield from" should be used as context manager expression'
+        )
 
     def __exit__(self, *args):
         # This must exist because __enter__ exists, even though that
@@ -203,7 +245,7 @@ class Engine:
         self._pool = None
         self._conn_kw = None
 
-    if PY_35:
+    if PY_35: # pragma: no cover
         @asyncio.coroutine
         def __aenter__(self):
             return self
@@ -212,8 +254,6 @@ class Engine:
         def __aexit__(self, exc_type, exc_val, exc_tb):
             self.close()
             yield from self.wait_closed()
-    else: # pragma: no cover
-        pass
 
 
 _EngineContextManager = _PoolContextManager

@@ -9,6 +9,7 @@ sa = pytest.importorskip("aiosqlite3.sa")
 
 from sqlalchemy import MetaData, Table, Column, Integer, String
 from sqlalchemy.schema import DropTable, CreateTable
+from sqlalchemy.sql.ddl import DDLElement
 
 meta = MetaData()
 tbl = Table(
@@ -70,7 +71,8 @@ def create_pool(loop, db):
     @asyncio.coroutine
     def go(*, no_loop=False, **kwargs):
         nonlocal pool
-        params = {'database': db}.update(kwargs)
+        params = {'database': db}
+        params.update(kwargs)
         pool = yield from aiosqlite3.create_pool(loop=loop, **params)
         return pool
     yield go
@@ -454,9 +456,13 @@ def test_fetchmany_with_size_closed(connect):
 @asyncio.coroutine
 def test_fetchmany_not_returns_rows(connect):
     conn = yield from connect()
+    assert not conn.closed
     res = yield from conn.execute(tbl.delete())
     with pytest.raises(sa.ResourceClosedError):
         yield from res.fetchmany()
+    yield from conn.close()
+    yield from conn.close()
+    assert conn.closed
 
 
 @pytest.mark.asyncio
@@ -473,6 +479,23 @@ def test_fetchmany_close_after_last_read(connect):
     rows2 = yield from res.fetchmany()
     assert 0 == len(rows2)
     assert res.closed
+
+
+@pytest.mark.asyncio
+async def test_sa_connection_context(make_engine):
+    engine = await make_engine()
+    async with engine.acquire() as conn:
+        async with conn.execute("SELECT 42") as res:
+            async for row in res:
+                assert row == (42,)
+@pytest.mark.asyncio
+@asyncio.coroutine
+def test_sa_connection_parameters(connect):
+    conn = yield from connect()
+
+    with pytest.raises(sa.exc.ArgumentError):
+        yield from conn.execute([])
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine

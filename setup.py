@@ -35,6 +35,8 @@ def find_version(*file_paths):
             line = version_file.readline()
     raise RuntimeError("Unable to find version string.")
 
+extras_require = {'sa': ['sqlalchemy>=0.9'], }
+
 setup(
     name='aiosqlite3',
     version=find_version('aiosqlite3', '__init__.py'),
@@ -56,5 +58,6 @@ setup(
         "Topic :: Database",
         'Framework :: AsyncIO',
     ],
-    install_requires=install_requires
+    install_requires=install_requires,
+    extras_require=extras_require
 )

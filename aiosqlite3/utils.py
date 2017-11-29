@@ -13,7 +13,7 @@ else: # pragma: no cover
     base = object
 
 
-def create_future(loop):
+def create_future(loop): # pragma: no cover
     """Compatibility wrapper for the loop.create_future() call introduced in
     3.5.2."""
     if hasattr(loop, 'create_future'):
@@ -21,7 +21,7 @@ def create_future(loop):
     else:
         return asyncio.Future(loop=loop)
 
-def create_task(coro, loop):
+def create_task(coro, loop): # pragma: no cover
     """Compatibility wrapper for the loop.create_task() call introduced in
     3.4.2."""
     if hasattr(loop, 'create_task'):
@@ -177,18 +177,17 @@ else:
 
 
 class _SAConnectionContextManager(_ContextManager):
-    if PY_35:  # pragma: no branch
+    if PY_35: # pragma: no cover
         @asyncio.coroutine
         def __aiter__(self):
             result = yield from self._coro
             return result
 class _TransactionContextManager(_ContextManager):
 
-    if PY_35:  # pragma: no branch
+    if PY_35: # pragma: no cover
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
-            print('----transaction close-----')
             if exc_type:
                 yield from self._obj.rollback()
             else:

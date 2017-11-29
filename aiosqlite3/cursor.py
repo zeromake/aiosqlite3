@@ -152,13 +152,23 @@ class Cursor:
             yield from self._execute(self._cursor.close)
             self._closed = True
 
+    # def sync_close(self):
+    #     """
+    #     同步关闭
+    #     """
+    #     if not self._closed:
+    #         self._conn._thread_execute(self._cursor.close)
+    #         self._closed = True
+
     def __del__(self):
         """
         回收引用
         """
-        self._conn = None
-        self._cursor = None
-        self._loop = None
+        if not self._closed:
+            self._conn = None
+            self._cursor = None
+            self._loop = None
+            self._closed = True
 
     if PY_35:
         @asyncio.coroutine

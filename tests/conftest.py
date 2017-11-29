@@ -3,8 +3,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import asyncio
 import gc
 import logging
-
+import tempfile
 import aiosqlite3
+from aiosqlite3 import sa
 import pytest
 from concurrent.futures import ThreadPoolExecutor
 
@@ -44,7 +45,12 @@ def make_conn(loop, db):
     conns = []
     @asyncio.coroutine
     def go(**kwargs):
-        conn = yield from aiosqlite3.connect(database=db, loop=loop, echo=True, **kwargs)
+        if 'database' in kwargs:
+            new_db = kwargs['database']
+            del kwargs['database']
+        else:
+            new_db = db
+        conn = yield from aiosqlite3.connect(database=new_db, loop=loop, echo=True, **kwargs)
         conns.append(conn)
         return conn
     yield go
@@ -96,3 +102,24 @@ async def cursor(conn):
     cursor_obj = await conn.cursor()
     yield cursor_obj
     await cursor_obj.close()
+
+@pytest.yield_fixture
+def make_engine(loop, db):
+    db = tempfile.mktemp('.db')
+    engine = None
+    @asyncio.coroutine
+    def go(use_loop=True, **kwargs):
+        params = {'database': db, 'echo': True}
+        params.update(kwargs)
+        if use_loop:
+            engine = yield from sa.create_engine(loop=loop, **params)
+        else:
+            engine = yield from sa.create_engine(**params)
+        return engine
+    yield go
+
+    if engine is not None:
+        engine.close()
+        loop.run_until_complete(engine.wait_closed())
+        if os.path.exists(db):
+            os.remove(db)
