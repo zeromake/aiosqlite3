@@ -2,6 +2,7 @@
 
 [![Travis Build Status](https://www.travis-ci.org/zeromake/aiosqlite3.svg?branch=master)](https://www.travis-ci.org/zeromake/aiosqlite3)
 [![codecov](https://codecov.io/gh/zeromake/aiosqlite3/branch/master/graph/badge.svg)](https://codecov.io/gh/zeromake/aiosqlite3)
+[![pypi](https://badge.fury.io/py/aiosqlite3.svg)](https://pypi.python.org/pypi/aiosqlite3)
 
 ## Basic Example
 
