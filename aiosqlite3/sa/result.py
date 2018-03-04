@@ -102,7 +102,7 @@ class ResultMetaData:
         self._keymap = keymap = {}
         self.keys = []
         dialect = result_proxy.dialect
-        typemap = dialect.dbapi_type_map
+        typemap = getattr(dialect, "dbapi_type_map", {})
         assert dialect.case_sensitive, \
             "Doesn't support case insensitive database connection"
 
@@ -110,7 +110,7 @@ class ResultMetaData:
         primary_keymap = {}
 
         assert not dialect.description_encoding, \
-            "psycopg in py3k should not use this"
+            "pysqlite in py3k should not use this"
 
         for i, rec in enumerate(metadata):
             colname = rec[0]
