@@ -18,7 +18,7 @@ deploy:
     provider: releases
     api_key:
         secure: ${GITHUB_TOKEN}
-    file: dist/aiosqlite3-*.whl
+    file: dist/aiosqlite3-*-py3-none-any.whl
     skip_cleanup: true
     on:
         tags: true

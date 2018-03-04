@@ -4,7 +4,7 @@ release: test
 	python setup.py bdist_wheel
 	twine upload dist/*.whl
 
-build: test
+build:
 	python setup.py bdist_wheel
 
 test:
