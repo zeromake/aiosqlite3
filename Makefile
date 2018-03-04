@@ -1,11 +1,10 @@
 .PHONY: release build test cov
 
-flake:
-	flake8 aiosqlite test
 release: test
-	python setup.py bdist_wheel upload
+	python setup.py bdist_wheel
+	twine upload dist/*.whl
 
-build: flake test
+build: test
 	python setup.py bdist_wheel
 
 test:
