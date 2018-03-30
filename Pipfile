@@ -1,16 +1,12 @@
 [[source]]
-
 url = "https://mirrors.aliyun.com/pypi/simple/"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
 
-
-
 [dev-packages]
-
+twine = "*"
 pytest = "*"
 pytest-sugar = "*"
 pytest-cov = "*"
@@ -19,7 +15,5 @@ pytest-asyncio = "*"
 sqlalchemy = "*"
 "pysqlcipher3" = "*"
 
-
 [requires]
-
 python_version = "3.6"

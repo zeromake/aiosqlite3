@@ -7,5 +7,6 @@ __pycache__/
 /*.egg-info/
 /.cache/
 /.coverage
+/.pytest_cache/
 /.vscode/
 /htmlcov/
