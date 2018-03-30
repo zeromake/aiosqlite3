@@ -127,7 +127,7 @@ class Engine:
 
     def __init__(self, dialect=_dialect, pool=None, paramstyle=None, **kwargs):
         if paramstyle: # pragma: no cover
-            compiler_dialect(paramstyle)
+            dialect = compiler_dialect(paramstyle)
         self._dialect = dialect
         self._pool = pool
         self._conn_kw = kwargs

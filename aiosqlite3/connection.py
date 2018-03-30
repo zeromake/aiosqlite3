@@ -274,7 +274,7 @@ class Connection:
         """
         关闭
         """
-        if self._closed:
+        if self._closed or self._conn is None:
             return
         res = yield from self._execute(self._conn.close)
         if self._check_same_thread:

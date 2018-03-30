@@ -68,12 +68,66 @@ class SAConnection:
         coro = self._execute(query, *multiparams, **params)
         return _SAConnectionContextManager(coro)
 
+    def _base_params(self, query, dp, compiled):
+        if not isinstance(query, DDLElement):
+            if dp and isinstance(dp, (list, tuple)):
+                if isinstance(query, UpdateBase):
+                    dp = {c.key: pval for c, pval in zip(query.table.c, dp)}
+                else: # pragma: no cover
+                    raise exc.ArgumentError(
+                        "Don't mix sqlalchemy SELECT "
+                        "clause with positional "
+                        "parameters"
+                    )
+            compiled_params = compiled.construct_params(dp)
+            processors = compiled._bind_processors
+            params = [{
+                key: (
+                    processors[key](compiled_params[key])
+                    if key in processors else compiled_params[key]
+                )
+                for key in compiled_params
+            }]
+            post_processed_params = self._dialect.execute_sequence_format(params)[0]
+        else:
+            if dp: # pragma: no cover
+                raise exc.ArgumentError(
+                    "Don't mix sqlalchemy DDL clause "
+                    "and execution with parameters"
+                )
+            post_processed_params = compiled.construct_params()
+        return post_processed_params
+
+    @asyncio.coroutine
+    def _executemany(self, query, dps, cursor):
+        if isinstance(query, str):
+            yield from cursor.executemany(query, dps)
+        elif isinstance(query, ClauseElement):
+            compiled = query.compile(dialect=self._dialect)
+            params = []
+            for dp in dps:
+                params.append(self._base_params(query, dp, compiled))
+            yield from cursor.executemany(str(compiled), params)
+        else:
+            raise exc.ArgumentError(
+                "sql statement should be str or "
+                "SQLAlchemy data "
+                "selection/modification clause"
+            )
+        ret = yield from create_result_proxy(self, cursor, self._dialect)
+        self._weak_results.add(ret)
+        return ret
+
     @asyncio.coroutine
     def _execute(self, query, *multiparams, **params):
+        """
+        execute or executemany
+        """
         cursor = yield from self._connection.cursor()
         dp = _distill_params(multiparams, params)
         if len(dp) > 1:
-            raise exc.ArgumentError("aiosqlite3 doesn't support executemany")
+            return (yield from self._executemany(query, dp, cursor))
+            # raise exc.ArgumentError("aiosqlite3 doesn't support executemany")
         elif dp:
             dp = dp[0]
 
@@ -81,47 +135,14 @@ class SAConnection:
             yield from cursor.execute(query, dp)
         elif isinstance(query, ClauseElement):
             compiled = query.compile(dialect=self._dialect)
-            # parameters = compiled.params
-            if not isinstance(query, DDLElement):
-                if dp and isinstance(dp, (list, tuple)):
-                    if isinstance(query, UpdateBase):
-                        dp = {c.key: pval
-                              for c, pval in zip(query.table.c, dp)}
-                    else: # pragma: no cover
-                        raise exc.ArgumentError(
-                            "Don't mix sqlalchemy SELECT "
-                            "clause with positional "
-                            "parameters"
-                        )
-                compiled_parameters = [compiled.construct_params(
-                    dp)]
-                processed_parameters = []
-                processors = compiled._bind_processors
-                for compiled_params in compiled_parameters:
-                    params = {key: (processors[key](compiled_params[key])
-                                    if key in processors
-                                    else compiled_params[key])
-                              for key in compiled_params}
-                    processed_parameters.append(params)
-                post_processed_params = self._dialect.execute_sequence_format(
-                    processed_parameters)
-                # compiled = query
-            else:
-                if dp: # pragma: no cover
-                    raise exc.ArgumentError(
-                        "Don't mix sqlalchemy DDL clause "
-                        "and execution with parameters"
-                    )
-                post_processed_params = [compiled.construct_params()]
-            # print(str(compiled), post_processed_params[0])
-            yield from cursor.execute(str(compiled), post_processed_params[0])
+            params = self._base_params(query, dp, compiled)
+            yield from cursor.execute(str(compiled), params)
         else:
             raise exc.ArgumentError(
                 "sql statement should be str or "
                 "SQLAlchemy data "
                 "selection/modification clause"
             )
-
         ret = yield from create_result_proxy(self, cursor, self._dialect)
         self._weak_results.add(ret)
         return ret

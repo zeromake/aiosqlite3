@@ -321,10 +321,11 @@ def test_raw_insert_with_named_params(connect):
 @asyncio.coroutine
 def test_raw_insert_with_executemany(connect):
     conn = yield from connect()
-    with pytest.raises(sa.ArgumentError):
-        yield from conn.execute(
-            "INSERT INTO sa_tbl (id, name) VALUES (:id, :name)",
-            [(2, 'third'), (3, 'forth')])
+    # with pytest.raises(sa.ArgumentError):
+    yield from conn.execute(
+        "INSERT INTO sa_tbl (id, name) VALUES (:id, :name)",
+        [(2, 'third'), (3, 'forth')]
+    )
 
 @pytest.mark.asyncio
 @asyncio.coroutine
