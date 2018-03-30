@@ -1,0 +1,106 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "f288a0cbd943173f4cf930e98a2510e9c6dbcc5cd11b100732e8734bf2dd11f8"
+        },
+        "host-environment-markers": {
+            "implementation_name": "cpython",
+            "implementation_version": "3.6.4",
+            "os_name": "posix",
+            "platform_machine": "x86_64",
+            "platform_python_implementation": "CPython",
+            "platform_release": "4.15.6-1-ARCH",
+            "platform_system": "Linux",
+            "platform_version": "#1 SMP PREEMPT Sun Feb 25 12:53:23 UTC 2018",
+            "python_full_version": "3.6.4",
+            "python_version": "3.6",
+            "sys_platform": "linux"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.6"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://mirrors.aliyun.com/pypi/simple/",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {},
+    "develop": {
+        "attrs": {
+            "hashes": [],
+            "version": "==17.4.0"
+        },
+        "certifi": {
+            "hashes": [],
+            "version": "==2018.1.18"
+        },
+        "chardet": {
+            "hashes": [],
+            "version": "==3.0.4"
+        },
+        "codecov": {
+            "hashes": [],
+            "version": "==2.0.15"
+        },
+        "coverage": {
+            "hashes": [],
+            "version": "==4.5.1"
+        },
+        "idna": {
+            "hashes": [],
+            "version": "==2.6"
+        },
+        "pluggy": {
+            "hashes": [],
+            "version": "==0.6.0"
+        },
+        "py": {
+            "hashes": [],
+            "version": "==1.5.2"
+        },
+        "pysqlcipher3": {
+            "hashes": [],
+            "version": "==1.0.2"
+        },
+        "pytest": {
+            "hashes": [],
+            "version": "==3.4.1"
+        },
+        "pytest-asyncio": {
+            "hashes": [],
+            "version": "==0.8.0"
+        },
+        "pytest-cov": {
+            "hashes": [],
+            "version": "==2.5.1"
+        },
+        "pytest-sugar": {
+            "hashes": [],
+            "version": "==0.9.1"
+        },
+        "requests": {
+            "hashes": [],
+            "version": "==2.18.4"
+        },
+        "six": {
+            "hashes": [],
+            "version": "==1.11.0"
+        },
+        "sqlalchemy": {
+            "hashes": [],
+            "version": "==1.2.4"
+        },
+        "termcolor": {
+            "hashes": [],
+            "version": "==1.1.0"
+        },
+        "urllib3": {
+            "hashes": [],
+            "version": "==1.22"
+        }
+    }
+}
