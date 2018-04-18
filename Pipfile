@@ -13,7 +13,8 @@ pytest-cov = "*"
 codecov = "*"
 pytest-asyncio = "*"
 sqlalchemy = "*"
-"pysqlcipher3" = "*"
+pylint = "*"
+"flake8" = "*"
 
 [requires]
 python_version = "3.6"

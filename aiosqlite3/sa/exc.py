@@ -1,5 +1,6 @@
 # ported from: https://github.com/aio-libs/aiopg/blob/master/aiopg/sa/exc.py
 
+
 class Error(Exception):
     """Generic error class."""
 

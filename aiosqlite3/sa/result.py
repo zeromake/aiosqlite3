@@ -16,6 +16,7 @@ def create_result_proxy(connection, cursor, dialect):
     yield from result_proxy._prepare()
     return result_proxy
 
+
 class RowProxy(Mapping):
 
     __slots__ = ('_result_proxy', '_row', '_processors', '_keymap')
@@ -317,7 +318,8 @@ class ResultProxy:
             # allow consistent errors
             self._cursor = None
             self._weak = None
-        else: # pragma: no cover
+        else:
+            # pragma: no cover
             pass
 
     # def __iter__(self):
@@ -352,9 +354,9 @@ class ResultProxy:
         except AttributeError:
             self._non_result()
         else:
-            l = self._process_rows(rows)
+            line = self._process_rows(rows)
             yield from self.close()
-            return l
+            return line
 
     @asyncio.coroutine
     def fetchone(self):
@@ -388,10 +390,10 @@ class ResultProxy:
         except AttributeError:
             self._non_result()
         else:
-            l = self._process_rows(rows)
-            if len(l) == 0:
+            line = self._process_rows(rows)
+            if len(line) == 0:
                 yield from self.close()
-            return l
+            return line
 
     @asyncio.coroutine
     def first(self):
@@ -436,6 +438,6 @@ class ResultProxy:
                 return data
             else:
                 raise StopAsyncIteration # noqa
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass
-

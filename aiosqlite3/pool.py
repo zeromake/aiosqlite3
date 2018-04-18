@@ -6,9 +6,10 @@ import asyncio
 import collections
 from .connection import connect
 from .utils import _PoolContextManager, _PoolAcquireContextManager, PY_35
-from .log import logger
+# from .log import logger
 
 __all__ = ['create_pool', 'Pool']
+
 
 def create_pool(
         database,
@@ -92,26 +93,44 @@ class Pool(asyncio.AbstractServer):
 
     @property
     def echo(self):
+        """
+        echo
+        """
         return self._echo
 
     @property
     def minsize(self):
+        """
+        minsize
+        """
         return self._minsize
 
     @property
     def maxsize(self):
+        """
+        maxsize
+        """
         return self._free.maxlen
 
     @property
     def size(self):
+        """
+        size
+        """
         return self.freesize + len(self._used) + self._acquiring
 
     @property
     def freesize(self):
+        """
+        freesize
+        """
         return len(self._free)
 
     @property
     def closed(self):
+        """
+        closed
+        """
         return self._closed
 
     @asyncio.coroutine
@@ -135,7 +154,8 @@ class Pool(asyncio.AbstractServer):
             return
         self._closing = True
 
-    def terminate(self): # pragma: no cover
+    def terminate(self):
+        # pragma: no cover
         """
         Terminate pool
         """
@@ -162,40 +182,32 @@ class Pool(asyncio.AbstractServer):
             conn = self._free.popleft()
             if not conn.closed:
                 yield from conn.close()
-            else: # pragma: no cover
+            else:
+                # pragma: no cover
                 pass
-
         with (yield from self._cond):
             while self.size > self.freesize:
                 yield from self._cond.wait()
-        # for conn in self._used:
-        #     if not conn.closed:
-        #         yield from conn.close()
-        #     else: # pragma: no cover
-        #         pass
-        #     self._terminated.add(conn)
         self._used.clear()
         self._closed = True
 
     def sync_close(self):
+        """
+        同步关闭
+        """
         if self._closed:
             return
-        # if not self._closing:
-        #     raise RuntimeError(
-        #         ".wait_closed() should be called "
-        #         "after .close()"
-        #     )
         while self._free:
             conn = self._free.popleft()
-            if not conn.closed: # pragma: no cover 
+            if not conn.closed:
+                # pragma: no cover
                 conn.sync_close()
-
         for conn in self._used:
-            if not conn.closed: # pragma: no cover
+            if not conn.closed:
+                # pragma: no cover
                 conn.sync_close()
             self._terminated.add(conn)
         self._used.clear()
-
         self._closed = True
 
     def acquire(self):
@@ -207,6 +219,9 @@ class Pool(asyncio.AbstractServer):
 
     @asyncio.coroutine
     def _acquire(self):
+        """
+        pool 获得一个 conn
+        """
         if self._closing:
             raise RuntimeError(
                 "Cannot acquire connection after closing pool"
@@ -260,6 +275,9 @@ class Pool(asyncio.AbstractServer):
 
     @asyncio.coroutine
     def _wakeup(self):
+        """
+        等待
+        """
         with (yield from self._cond):
             self._cond.notify()
 
@@ -294,5 +312,6 @@ class Pool(asyncio.AbstractServer):
         def __aexit__(self, exc_type, exc_val, exc_tb):
             self.close()
             yield from self.wait_closed()
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass

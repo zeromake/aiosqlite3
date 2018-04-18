@@ -26,14 +26,21 @@ except ImportError:  # pragma: no cover
 
 SQLiteCompiler = SQLiteDialect_pysqlite.statement_compiler
 
+
 class ACompiler_sqlite(SQLiteCompiler):
     """
     让SQLite支持default
     """
     def construct_params(self, params=None, _group_number=None, _check=True):
-        compiler_params = super().construct_params(params, _group_number, _check)
+        compiler_params = super().construct_params(
+            params,
+            _group_number,
+            _check
+        )
         for column in self.prefetch:
-            compiler_params[column.key] = self._exec_default(column.default)
+            compiler_params[column.key] = self._exec_default(
+                column.default
+            )
         return compiler_params
 
     def _exec_default(self, default):
@@ -42,8 +49,11 @@ class ACompiler_sqlite(SQLiteCompiler):
         else:
             return default.arg
 
-def json_deserializer(x): # pragma: no cover
+
+def json_deserializer(x):
+    # pragma: no cover
     return x
+
 
 def compiler_dialect(paramstyle='named'):
     """
@@ -58,7 +68,9 @@ def compiler_dialect(paramstyle='named'):
     dialect.statement_compiler = ACompiler_sqlite
     return dialect
 
+
 _dialect = compiler_dialect()
+
 
 def create_engine(
         database,
@@ -67,8 +79,7 @@ def create_engine(
         loop=None,
         dialect=_dialect,
         paramstyle=None,
-        **kwargs
-    ):
+        **kwargs):
     """
     A coroutine for Engine creation.
 
@@ -96,9 +107,9 @@ def _create_engine(
         loop=None,
         dialect=_dialect,
         paramstyle=None,
-        **kwargs
-    ):
-    if loop is None: # pragma: no cover
+        **kwargs):
+    if loop is None:
+        # pragma: no cover
         loop = asyncio.get_event_loop()
     pool = yield from aiosqlite3.create_pool(
         database=database,
@@ -126,7 +137,8 @@ class Engine:
     """
 
     def __init__(self, dialect=_dialect, pool=None, paramstyle=None, **kwargs):
-        if paramstyle: # pragma: no cover
+        if paramstyle:
+            # pragma: no cover
             dialect = compiler_dialect(paramstyle)
         self._dialect = dialect
         self._pool = pool
@@ -215,9 +227,10 @@ class Engine:
         )
 
     def __exit__(self, *args):
+        # pragma: no cover
         # This must exist because __enter__ exists, even though that
         # always raises; that's how the with-statement works.
-        pass  # pragma: nocover
+        pass
 
     def __iter__(self):
         # This is not a coroutine.  It is meant to enable the idiom:
@@ -245,7 +258,8 @@ class Engine:
         self._pool = None
         self._conn_kw = None
 
-    if PY_35: # pragma: no cover
+    if PY_35:
+        # pragma: no cover
         @asyncio.coroutine
         def __aenter__(self):
             return self

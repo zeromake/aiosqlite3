@@ -12,6 +12,7 @@ from .utils import (
 
 __all__ = ['Cursor']
 
+
 @delegate_to_executor(
     '_cursor',
     (
@@ -48,27 +49,39 @@ class Cursor:
             log_fun(message, *args)
 
     @asyncio.coroutine
-    def _execute(self, fn, *args, **kwargs):
+    def _execute(self, func, *args, **kwargs):
         """
         Execute the given function on the shared connection's thread.
         """
-        res = yield from self._conn._execute(fn, *args, **kwargs)
+        res = yield from self._conn.async_execute(func, *args, **kwargs)
         return res
 
     @property
     def arraysize(self):
+        """
+        arraysize
+        """
         return self._cursor.arraysize
 
     @arraysize.setter
     def arraysize(self, value):
+        """
+        set arraysize
+        """
         self._cursor.arraysize = value
 
     @property
     def loop(self):
+        """
+        loop
+        """
         return self._loop
 
     @property
     def closed(self):
+        """
+        close
+        """
         return self._closed
 
     @property
@@ -111,7 +124,8 @@ class Cursor:
             sql,
             str(parameters)
         )
-        if parameters is None: # pragma: no cover
+        if parameters is None:
+            # pragma: no cover
             parameters = []
         res = yield from self._execute(self._cursor.execute, sql, parameters)
         return res
@@ -127,7 +141,11 @@ class Cursor:
             sql,
             str(parameters)
         )
-        res = yield from self._execute(self._cursor.executemany, sql, parameters)
+        res = yield from self._execute(
+            self._cursor.executemany,
+            sql,
+            parameters
+        )
         return res
 
     @asyncio.coroutine
@@ -159,6 +177,35 @@ class Cursor:
     #     if not self._closed:
     #         self._conn._thread_execute(self._cursor.close)
     #         self._closed = True
+    def __enter__(self):
+        """
+        enter
+        """
+        return self
+
+    def __exit__(self, exc_type, exc, tbs):
+        """
+        exit
+        """
+        if not self._closed:
+            self._conn.sync_execute(self._cursor.close)
+            self._closed = True
+
+    def __iter__(self):
+        """
+        iter
+        """
+        return self
+
+    def __next__(self):
+        """
+        next
+        """
+        res = self._conn.sync_execute(self._cursor.fetchone)
+        if res is None:
+            raise StopIteration
+        else:
+            return res
 
     def __del__(self):
         """
@@ -182,5 +229,6 @@ class Cursor:
                 raise StopAsyncIteration
             else:
                 return res
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass

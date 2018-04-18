@@ -1,9 +1,18 @@
-from threading import Thread, Event
-from queue import Queue, Empty
+
+"""
+thread
+"""
+
+from threading import Thread
+from queue import Empty
+
 
 class SqliteThread(Thread):
+    """
+    sqlite thread
+    """
     def __init__(self, tx_queue, rx_queue, tx_event, rx_event):
-        Thread.__init__(self)
+        super(SqliteThread, self).__init__()
         self._tx_event = tx_event
         self._rx_event = rx_event
         self._tx_queue = tx_queue
@@ -24,7 +33,8 @@ class SqliteThread(Thread):
                     self._rx_queue.put('closed')
                     self.notice()
                     break
-            except Empty: # pragma: no cover
+            except Empty:
+                # pragma: no cover
                 continue
             try:
                 result = func()
@@ -32,7 +42,8 @@ class SqliteThread(Thread):
             except Exception as e:
                 self._rx_queue.put(e)
             self.notice()
-        else: # pragma: no cover
+        else:
+            # pragma: no cover
             pass
 
     def notice(self):
@@ -51,22 +62,23 @@ class SqliteThread(Thread):
         self._rx_queue = None
 
 
-
-if __name__ == '__main__': # pragma: no cover
-    tx = Queue()
-    rx = Queue()
-    tx_event = Event()
-    rx_event = Event()
-    thread = SqliteThread(tx, rx, tx_event, rx_event)
-    thread.start()
-    def test():
-        return 5555
-    tx.put(test)
-    tx_event.set()
-    rx_event.wait()
-    rx_event.clear()
-    res = rx.get(timeout=0.1)
-    print(res)
-    tx.put('close')
-    tx_event.set()
-    rx_event.wait()
+if __name__ == '__main__':
+    # pragma: no cover
+    pass
+    # tx = Queue()
+    # rx = Queue()
+    # tx_event = Event()
+    # rx_event = Event()
+    # thread = SqliteThread(tx, rx, tx_event, rx_event)
+    # thread.start()
+    # def test():
+    #     return 5555
+    # tx.put(test)
+    # tx_event.set()
+    # rx_event.wait()
+    # rx_event.clear()
+    # res = rx.get(timeout=0.1)
+    # print(res)
+    # tx.put('close')
+    # tx_event.set()
+    # rx_event.wait()

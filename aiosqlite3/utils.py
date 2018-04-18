@@ -8,29 +8,31 @@ PY_35 = sys.version_info >= (3, 5)
 
 if PY_35:
     from collections.abc import Coroutine
-    base = Coroutine
-else: # pragma: no cover
-    base = object
+    BASE = Coroutine
+else:
+    # pragma: no cover
+    BASE = object
 
 
-def create_future(loop): # pragma: no cover
+def create_future(loop):
+    # pragma: no cover
     """Compatibility wrapper for the loop.create_future() call introduced in
     3.5.2."""
     if hasattr(loop, 'create_future'):
         return loop.create_future()
-    else:
-        return asyncio.Future(loop=loop)
+    return asyncio.Future(loop=loop)
 
-def create_task(coro, loop): # pragma: no cover
+
+def create_task(coro, loop):
+    # pragma: no cover
     """Compatibility wrapper for the loop.create_task() call introduced in
     3.4.2."""
     if hasattr(loop, 'create_task'):
         return loop.create_task(coro)
-    else:
-        return asyncio.Task(coro, loop=loop)
+    return asyncio.Task(coro, loop=loop)
 
 
-class _ContextManager(base):
+class _ContextManager(BASE):
     __slots__ = ('_coro', '_obj')
 
     def __init__(self, coro):
@@ -40,33 +42,47 @@ class _ContextManager(base):
     def send(self, value):
         return self._coro.send(value)
 
-    def throw(self, typ, val=None, tb=None): # pragma: no cover
+    def throw(self, typ, val=None, tb=None):
+        # pragma: no cover
         if val is None:
             return self._coro.throw(typ)
         elif tb is None:
             return self._coro.throw(typ, val)
-        else:
-            return self._coro.throw(typ, val, tb)
+        return self._coro.throw(typ, val, tb)
 
-    def close(self): # pragma: no cover
+    def close(self):
+        # pragma: no cover
         return self._coro.close()
 
     @property
-    def gi_frame(self): # pragma: no cover
+    def gi_frame(self):
+        # pragma: no cover
+        """
+        gi_frame
+        """
         return self._coro.gi_frame
 
     @property
-    def gi_running(self): # pragma: no cover
+    def gi_running(self):
+        # pragma: no cover
+        """
+        gi_runing
+        """
         return self._coro.gi_running
 
     @property
-    def gi_code(self): # pragma: no cover
+    def gi_code(self):
+        # pragma: no cover
+        """
+        gi_code
+        """
         return self._coro.gi_code
 
-    def __next__(self): # pragma: no cover
+    def __next__(self):
+        # pragma: no cover
         return self.send(None)
 
-    @asyncio.coroutine
+    # @asyncio.coroutine
     def __iter__(self):
         resp = yield from self._coro
         return resp
@@ -82,10 +98,11 @@ class _ContextManager(base):
             return self._obj
 
         @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
+        def __aexit__(self, exc_type, exc, tbs):
             yield from self._obj.close()
             self._obj = None
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass
 
 
@@ -99,8 +116,10 @@ class _PoolContextManager(_ContextManager):
             self._obj.close()
             yield from self._obj.wait_closed()
             self._obj = None
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass
+
 
 class _LazyloadContextManager(_ContextManager):
     """
@@ -109,10 +128,12 @@ class _LazyloadContextManager(_ContextManager):
     __slots__ = ('_coro', '_obj', '_lazyload')
 
     def __init__(self, coro, lazyload):
-        if not lazyload: # pragma: no cover
+        super(_LazyloadContextManager, self).__init__(coro)
+        if not lazyload:
+            # pragma: no cover
             raise TypeError('lazyload is function')
-        self._coro = coro
-        self._obj = None
+        # self._coro = coro
+        # self._obj = None
         self._lazyload = lazyload
 
     @asyncio.coroutine
@@ -137,15 +158,18 @@ class _LazyloadContextManager(_ContextManager):
         def __aexit__(self, exc_type, exc, tb):
             yield from self._obj.close()
             self._obj = None
-    
-    else: # pragma: no cover
+
+    else:
+        # pragma: no cover
         pass
+
 
 class _PoolAcquireContextManager(_ContextManager):
     __slots__ = ('_coro', '_conn', '_pool')
 
     def __init__(self, coro, pool):
-        self._coro = coro
+        super(_PoolAcquireContextManager, self).__init__(coro)
+        # self._coro = coro
         self._conn = None
         self._pool = pool
 
@@ -162,29 +186,35 @@ class _PoolAcquireContextManager(_ContextManager):
             finally:
                 self._pool = None
                 self._conn = None
-    else: # pragma: no cover
+    else:
+        # pragma: no cover
         pass
 
 
-if not PY_35: # pragma: no cover
+if not PY_35:
+    # pragma: no cover
     try:
         from asyncio import coroutines
         coroutines._COROUTINE_TYPES += (_ContextManager,)
-    except Exception as error:
+    except TypeError:
         pass
 else:
     pass
 
 
 class _SAConnectionContextManager(_ContextManager):
-    if PY_35: # pragma: no cover
+    if PY_35:
+        # pragma: no cover
         @asyncio.coroutine
         def __aiter__(self):
             result = yield from self._coro
             return result
+
+
 class _TransactionContextManager(_ContextManager):
 
-    if PY_35: # pragma: no cover
+    if PY_35:
+        # pragma: no cover
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
@@ -195,6 +225,7 @@ class _TransactionContextManager(_ContextManager):
                     yield from self._obj.commit()
             yield from self._obj.close()
             self._obj = None
+
 
 def delegate_to_executor(bind_attr, attrs):
     """
@@ -248,6 +279,9 @@ def proxy_property_directly(bind_attr, attrs):
 def _make_delegate_method(bind_attr, attr_name):
     @asyncio.coroutine
     def method(self, *args, **kwargs):
+        """
+        method
+        """
         bind = getattr(self, bind_attr)
         func = getattr(bind, attr_name)
         res = yield from self._execute(func, *args, **kwargs)
@@ -264,6 +298,9 @@ def _make_delegate_method(bind_attr, attr_name):
 
 def _make_proxy_property(bind_attr, attr_name):
     def proxy_property(self):
+        """
+        proxy
+        """
         bind = getattr(self, bind_attr)
         return getattr(bind, attr_name)
     return property(proxy_property)

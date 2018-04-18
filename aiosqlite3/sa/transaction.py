@@ -3,7 +3,7 @@
 import asyncio
 
 from . import exc
-from ..utils import PY_35
+# from ..utils import PY_35
 
 
 class Transaction(object):
@@ -60,7 +60,8 @@ class Transaction(object):
         """
         if not self._connection or not self._parent:
             return
-        if not self._parent._is_active: # pragma: no cover
+        if not self._parent._is_active:
+            # pragma: no cover
             self._connection = None
             # self._parent = None
             return

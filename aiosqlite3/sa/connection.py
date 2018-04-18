@@ -14,7 +14,11 @@ from .transaction import (
     Transaction,
     NestedTransaction
 )
-from ..utils import PY_35, _TransactionContextManager, _SAConnectionContextManager
+from ..utils import (
+    PY_35,
+    _TransactionContextManager,
+    _SAConnectionContextManager
+)
 
 
 class SAConnection:
@@ -73,7 +77,8 @@ class SAConnection:
             if dp and isinstance(dp, (list, tuple)):
                 if isinstance(query, UpdateBase):
                     dp = {c.key: pval for c, pval in zip(query.table.c, dp)}
-                else: # pragma: no cover
+                else:
+                    # pragma: no cover
                     raise exc.ArgumentError(
                         "Don't mix sqlalchemy SELECT "
                         "clause with positional "
@@ -88,9 +93,12 @@ class SAConnection:
                 )
                 for key in compiled_params
             }]
-            post_processed_params = self._dialect.execute_sequence_format(params)[0]
+            post_processed_params = self._dialect.execute_sequence_format(
+                params
+            )[0]
         else:
-            if dp: # pragma: no cover
+            if dp:
+                # pragma: no cover
                 raise exc.ArgumentError(
                     "Don't mix sqlalchemy DDL clause "
                     "and execution with parameters"
@@ -207,11 +215,10 @@ class SAConnection:
     def _begin_impl(self):
         yield from self._connection.execute('BEGIN TRANSACTION')
 
-
     @asyncio.coroutine
     def commit(self):
         """
-
+        commit
         """
         yield from self._commit_impl()
 
@@ -219,19 +226,8 @@ class SAConnection:
     def _commit_impl(self):
         try:
             yield from self._connection.commit()
-            # yield from self._connection.execute('COMMIT')
         finally:
             self._transaction = None
-        # cur = yield from self._connection.cursor()
-        # try:
-        #     yield from cur.execute('COMMIT')
-        # finally:
-        #     yield from cur.close()
-        #     self._transaction = None
-    
-    # @asyncio.coroutine
-    # def rollback(self):
-    #     self._rollback_impl()
 
     @asyncio.coroutine
     def _rollback_impl(self):
@@ -239,12 +235,6 @@ class SAConnection:
             yield from self._connection.rollback()
         finally:
             self._transaction = None
-        # cur = yield from self._connection.cursor()
-        # try:
-        #     yield from cur.execute('ROLLBACK')
-        # finally:
-        #     yield from cur.close()
-        #     self._transaction = None
 
     @asyncio.coroutine
     def begin_nested(self):
@@ -338,16 +328,17 @@ class SAConnection:
         self._weak_results = None
         self._dialect = None
 
-    # if PY_35:
-    #     @asyncio.coroutine
-    #     def __aenter__(self):
-    #         return self
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
 
-    #     @asyncio.coroutine
-    #     def __aexit__(self, exc_type, exc_val, exc_tb):
-    #         yield from self.close()
-    # else: # pragma: no cover
-    #     pass
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            yield from self.close()
+    else:
+        # pragma: no cover
+        pass
 
 
 def _distill_params(multiparams, params):

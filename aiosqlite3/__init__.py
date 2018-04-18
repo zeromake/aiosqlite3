@@ -18,7 +18,7 @@ from .pool import create_pool, Pool
 from .cursor import Cursor
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "connect",
     "Connection",

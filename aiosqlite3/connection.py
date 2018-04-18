@@ -6,7 +6,7 @@ import asyncio
 import sqlite3
 from functools import partial
 from threading import Event
-from queue import Queue, Empty
+from queue import Queue
 
 from .sqlite_thread import SqliteThread
 from .utils import (
@@ -20,31 +20,32 @@ from .log import logger
 
 __all__ = ['Connection', 'connect']
 
-@delegate_to_executor(
-    '_conn',
-    (
-        'commit',
-        'rollback',
-        'create_function',
-        'create_aggregate',
-        'create_collation',
-        'interrupt',
-        'set_authorizer',
-        'set_progress_handler',
-        'set_trace_callback',
-        'enable_load_extension',
-        'load_extension',
-        'iterdump'
-    )
+_PROXY = (
+    'commit',
+    'rollback',
+    'create_function',
+    'create_aggregate',
+    'create_collation',
+    'interrupt',
+    'set_authorizer',
+    'set_progress_handler',
+    'set_trace_callback',
+    'enable_load_extension',
+    'load_extension',
+    'iterdump'
 )
-@proxy_property_directly(
-    '_conn',
-    (
-        'in_transaction',
-        'total_changes'
-    )
+__PROXY = (
+    'in_transaction',
+    'total_changes'
 )
+
+
+@delegate_to_executor('_conn', _PROXY)
+@proxy_property_directly('_conn', __PROXY)
 class Connection:
+    """
+    proxy sqlite3.connection
+    """
     def __init__(
             self,
             database,
@@ -58,8 +59,9 @@ class Connection:
             **kwargs
     ):
         if check_same_thread:
-            logger.warn(
-                'check_same_thread is True sqlite on one Thread run'
+            logger.warning(
+                'check_same_thread is True '
+                'sqlite on one Thread run'
             )
         self._sqlite = sqlite
         self._database = database
@@ -85,20 +87,22 @@ class Connection:
                 self.rx_event
             )
             self._thread.start()
+            self._threading = True
         else:
             self._thread = None
+            self._threading = False
 
-    # def __enter__(self):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     return self
+    def __enter__(self):
+        """
+        普通上下文处理
+        """
+        return self
 
-    # def __exit__(self, exc_type, exc, tbs):
-    #     """
-    #     普通上下文处理
-    #     """
-    #     self._loop.run_until_complete(self.close())
+    def __exit__(self, exc_type, exc, tbs):
+        """
+        普通上下文处理
+        """
+        self._loop.call_soon_threadsafe(self.close)
 
     def _log(self, level, message, *args):
         """
@@ -119,8 +123,29 @@ class Connection:
         if self._check_same_thread:
             future = yield from self._async_thread_execute(func)
         else:
-            future = yield from self._loop.run_in_executor(self._executor, func)
+            future = yield from self._loop.run_in_executor(
+                self._executor,
+                func
+            )
         return future
+
+    @asyncio.coroutine
+    def async_execute(self, func, *args, **kwargs):
+        """
+        把同步转为async运行
+        """
+        return (yield from self._execute(func, *args, **kwargs))
+
+    def sync_execute(self, func, *args, **kwargs):
+        """
+        同步执行方法
+        """
+        if self._closed:
+            raise TypeError('connection is close')
+        func = partial(func, *args, **kwargs)
+        if self._check_same_thread:
+            return self._thread_execute(func)
+        return func()
 
     @asyncio.coroutine
     def _close_thread(self):
@@ -136,7 +161,10 @@ class Connection:
         """
         with (yield from self._thread_lock):
             func = partial(self._thread_execute, func)
-            future = yield from self._loop.run_in_executor(self._executor, func)
+            future = yield from self._loop.run_in_executor(
+                self._executor,
+                func
+            )
         return future
 
     def _thread_execute(self, func):
@@ -148,7 +176,8 @@ class Connection:
         self.rx_event.wait()
         self.rx_event.clear()
         result = self.rx_queue.get_nowait()
-        if isinstance(result, Exception): # pragma: no cover
+        if isinstance(result, Exception):
+            # pragma: no cover
             raise result
         return result
 
@@ -172,9 +201,18 @@ class Connection:
             self._database
         )
 
+    @asyncio.coroutine
+    def connect(self):
+        """
+        connect
+        """
+        return (yield from self._connect())
 
     @property
     def echo(self):
+        """
+        日志输出开关
+        """
         return self._echo
 
     @property
@@ -214,6 +252,9 @@ class Connection:
 
     @isolation_level.setter
     def isolation_level(self, value: str) -> None:
+        """
+        事物等级
+        """
         if self._check_same_thread:
             func = partial(self._sync_setter, 'isolation_level', value)
             self._thread_execute(func)
@@ -222,8 +263,11 @@ class Connection:
 
     @property
     def row_factory(self):
+        """
+        row_factory
+        """
         return self._conn.row_factory
-    
+
     def _sync_setter(self, field, value):
         """
         同步设置属性
@@ -232,6 +276,9 @@ class Connection:
 
     @row_factory.setter
     def row_factory(self, value):
+        """
+        set row_factory
+        """
         if self._check_same_thread:
             func = partial(self._sync_setter, 'row_factory', value)
             self._thread_execute(func)
@@ -240,10 +287,16 @@ class Connection:
 
     @property
     def text_factory(self):
-            return self._conn.text_factory
+        """
+        text_factory
+        """
+        return self._conn.text_factory
 
     @text_factory.setter
     def text_factory(self, value):
+        """
+        set text_factory
+        """
         if self._check_same_thread:
             func = partial(self._sync_setter, 'text_factory', value)
             self._thread_execute(func)
@@ -276,7 +329,7 @@ class Connection:
         """
         if self._closed or self._conn is None:
             return
-        res = yield from self._execute(self._conn.close)
+        yield from self._execute(self._conn.close)
         if self._check_same_thread:
             yield from self._close_thread()
             self._thread = None
@@ -286,7 +339,6 @@ class Connection:
             'close-> "%s" ok',
             self._database
         )
-        return res
 
     def execute(
             self,
@@ -368,7 +420,8 @@ class Connection:
                     self.rx_queue = None
                     self.tx_event = None
                     self.rx_event = None
-                else: # pragma: no cover
+                else:
+                    # pragma: no cover
                     pass
             else:
                 self._conn.close()
@@ -389,11 +442,11 @@ class Connection:
 
 def connect(
         database: str,
-        loop: asyncio.BaseEventLoop=None,
-        executor: concurrent.futures.Executor=None,
+        loop: asyncio.BaseEventLoop = None,
+        executor: concurrent.futures.Executor = None,
         timeout: int = 5,
         echo: bool = False,
-        isolation_level='',
+        isolation_level: str = '',
         check_same_thread: bool = False,
         **kwargs: dict
 ):
@@ -416,11 +469,11 @@ def connect(
 @asyncio.coroutine
 def _connect(
         database: str,
-        loop: asyncio.BaseEventLoop=None,
-        executor: concurrent.futures.Executor=None,
+        loop: asyncio.BaseEventLoop = None,
+        executor: concurrent.futures.Executor = None,
         timeout: int = 5,
         echo: bool = False,
-        isolation_level='',
+        isolation_level: str = '',
         check_same_thread: bool = False,
         **kwargs: dict
 ):
@@ -439,5 +492,5 @@ def _connect(
         check_same_thread=check_same_thread,
         **kwargs
     )
-    yield from conn._connect()
+    yield from conn.connect()
     return conn
