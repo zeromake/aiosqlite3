@@ -44,7 +44,7 @@ def test_default_fields(engine):
         assert row.count_str == 6
         assert row.name == 'default test'
         assert row.is_active == 1
-        assert type(row.date) == str
+        assert isinstance(row.date, datetime.datetime)
         yield from res.close()
 
 @pytest.mark.asyncio
@@ -84,6 +84,6 @@ def test_default_fields_edit(engine):
         assert row.count_str == 6
         assert row.name == 'edit name'
         assert row.is_active == 0
-        assert row.date == str(date)
+        assert row.date == date
         yield from res.close()
 
