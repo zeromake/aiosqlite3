@@ -5,6 +5,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.sql.ddl import CreateTable
 
+
 meta = sa.MetaData()
 tbl = sa.Table(
     'sa_tbl4',
@@ -17,6 +18,7 @@ tbl = sa.Table(
     sa.Column('is_active', sa.Boolean, default=True),
     sqlite_autoincrement=True
 )
+
 
 @pytest.fixture
 def engine(make_engine, loop):
@@ -32,6 +34,7 @@ def engine(make_engine, loop):
 
     return loop.run_until_complete(start())
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_default_fields(engine):
@@ -46,6 +49,7 @@ def test_default_fields(engine):
         assert row.is_active == 1
         assert isinstance(row.date, datetime.datetime)
         yield from res.close()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -64,6 +68,7 @@ def test_default_fields_isnull(engine):
         assert row.is_active == 0
         assert row.date is None
         yield from res.close()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -86,4 +91,3 @@ def test_default_fields_edit(engine):
         assert row.is_active == 0
         assert row.date == date
         yield from res.close()
-

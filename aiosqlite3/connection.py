@@ -16,7 +16,7 @@ from .utils import (
     proxy_property_directly
 )
 from .cursor import Cursor
-from .log import logger
+from .log import LOGGER as logger
 
 __all__ = ['Connection', 'connect']
 

@@ -4,7 +4,7 @@ import pytest
 
 import aiosqlite3
 from aiosqlite3 import Pool, Connection
-from tests.utils import PY_35
+# from tests.utils import PY_35
 
 
 @pytest.mark.asyncio
@@ -20,6 +20,7 @@ def test_create_pool(loop, pool_maker, db):
     assert pool.size == 1
     assert pool.freesize == 1
     assert not pool.echo
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -38,6 +39,7 @@ def test_acquire(pool):
     finally:
         yield from pool.release(conn)
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_release(pool):
@@ -49,6 +51,7 @@ def test_release(pool):
         yield from pool.release(conn)
     assert pool.freesize == 1
     assert not pool._used
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -66,6 +69,7 @@ def test_release_closed(pool):
     assert pool.size == 1
     yield from pool.release(conn2)
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_context_manager(pool):
@@ -77,6 +81,7 @@ def test_context_manager(pool):
     finally:
         yield from pool.release(conn)
     assert pool.freesize == 1
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -154,6 +159,7 @@ def test_parallel_tasks(loop, pool_maker, db):
     assert conn3 is conn1
     yield from pool.release(conn3)
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_parallel_tasks_more(loop, pool_maker, db):
@@ -163,8 +169,12 @@ def test_parallel_tasks_more(loop, pool_maker, db):
     fut2 = pool.acquire()
     fut3 = pool.acquire()
 
-    conn1, conn2, conn3 = yield from asyncio.gather(fut1, fut2, fut3,
-                                               loop=loop)
+    conn1, conn2, conn3 = yield from asyncio.gather(
+        fut1,
+        fut2,
+        fut3,
+        loop=loop
+    )
     assert pool.size == 3
     assert pool.freesize == 0
     assert {conn1, conn2, conn3} == pool._used
@@ -193,6 +203,7 @@ def test_parallel_tasks_more(loop, pool_maker, db):
     assert conn4 is conn1
     yield from pool.release(conn4)
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_default_loop(loop, db):
@@ -200,6 +211,7 @@ def test_default_loop(loop, db):
     assert pool._loop is loop
     pool.close()
     yield from pool.wait_closed()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -211,8 +223,11 @@ def test__fill_free(loop, pool_maker, db):
         assert pool.freesize == 0
         assert pool.size == 1
 
-        conn = yield from asyncio.wait_for(pool.acquire(), timeout=0.5,
-                                      loop=loop)
+        conn = yield from asyncio.wait_for(
+            pool.acquire(),
+            timeout=0.5,
+            loop=loop
+        )
         assert pool.freesize == 0
         assert pool.size == 2
         yield from pool.release(conn)
@@ -273,7 +288,6 @@ def test_invalid_minsize_and_maxsize(loop, db):
         )
 
 
-
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_true_parallel_tasks(loop, pool_maker, db):
@@ -286,7 +300,6 @@ def test_true_parallel_tasks(loop, pool_maker, db):
 
     maxsize = 0
     minfreesize = 100
-
 
     @asyncio.coroutine
     def inner():
@@ -428,6 +441,7 @@ def test_pool_with_executor(loop, pool_maker, db, executor):
     pool.close()
     yield from pool.wait_closed()
 
+
 @pytest.mark.asyncio
 async def test_pool_context_manager(loop, pool):
     assert not pool.closed
@@ -464,6 +478,7 @@ async def test_all_context_managers(db, loop, executor):
     assert conn.closed
     assert cur.closed
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_pool_del(db, loop):
@@ -473,5 +488,5 @@ def test_pool_del(db, loop):
     @asyncio.coroutine
     def make():
         pool = yield from aiosqlite3.create_pool(database=db, loop=loop)
-        conn = yield from pool.acquire()
+        yield from pool.acquire()
     yield from make()

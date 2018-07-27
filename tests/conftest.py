@@ -4,13 +4,16 @@ import os
 import logging
 import tempfile
 import aiosqlite3
-from aiosqlite3 import sa
 import pytest
+
+from aiosqlite3 import sa
 from concurrent.futures import ThreadPoolExecutor
+
 
 logging.basicConfig(
     level=logging.DEBUG
 )
+
 
 @pytest.fixture(scope='session')
 def event_loop():
@@ -19,12 +22,14 @@ def event_loop():
     gc.collect()
     loop_obj.close()
 
+
 @pytest.fixture(scope='session')
 def loop(event_loop):
     """
     生成loop
     """
     return event_loop
+
 
 @pytest.fixture
 def conn(loop, db):
@@ -36,12 +41,14 @@ def conn(loop, db):
     yield connection
     loop.run_until_complete(connection.close())
 
+
 @pytest.fixture
 def make_conn(loop, db):
     """
     创建一个连接方法
     """
     conns = []
+
     @asyncio.coroutine
     def go(**kwargs):
         if 'database' in kwargs:
@@ -49,7 +56,12 @@ def make_conn(loop, db):
             del kwargs['database']
         else:
             new_db = db
-        conn = yield from aiosqlite3.connect(database=new_db, loop=loop, echo=True, **kwargs)
+        conn = yield from aiosqlite3.connect(
+            database=new_db,
+            loop=loop,
+            echo=True,
+            **kwargs
+        )
         conns.append(conn)
         return conn
     yield go
@@ -57,9 +69,11 @@ def make_conn(loop, db):
         if not conn.closed:
             loop.run_until_complete(conn.close())
 
+
 @pytest.fixture
 def db():
     return ':memory:'
+
 
 @pytest.fixture
 def executor():
@@ -102,10 +116,12 @@ async def cursor(conn):
     yield cursor_obj
     await cursor_obj.close()
 
+
 @pytest.yield_fixture
 def make_engine(loop, db):
     db = tempfile.mktemp('.db')
     engine = None
+
     @asyncio.coroutine
     def go(use_loop=True, **kwargs):
         params = {'database': db, 'echo': True}

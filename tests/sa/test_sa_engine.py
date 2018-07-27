@@ -1,8 +1,11 @@
 import asyncio
 # from aiosqlite3.connection import TIMEOUT
 import pytest
-sa = pytest.importorskip("aiosqlite3.sa")
 from sqlalchemy import MetaData, Table, Column, Integer, String
+
+
+sa = pytest.importorskip("aiosqlite3.sa")
+
 
 meta = MetaData()
 tbl = Table(
@@ -20,16 +23,20 @@ tbl = Table(
         )
 )
 
+
 @pytest.fixture
 def engine(make_engine, loop):
+
     @asyncio.coroutine
     def start():
         engine = yield from make_engine()
         return engine
     return loop.run_until_complete(start())
 
+
 def test_dialect(engine):
     assert sa.engine._dialect is engine.dialect
+
 
 def test_name(engine):
     assert 'sqlite' == engine.name
@@ -38,14 +45,18 @@ def test_name(engine):
 def test_driver(engine):
     assert 'pysqlite' == engine.driver
 
+
 def test_minsize(engine):
     assert 1 == engine.minsize
+
 
 def test_maxsize(engine):
     assert 10 == engine.maxsize
 
+
 def test_size(engine):
     assert 1 == engine.size
+
 
 def test_freesize(engine):
     assert 1 == engine.freesize
@@ -55,6 +66,7 @@ def test_not_context_manager(engine):
     with pytest.raises(RuntimeError):
         with engine:
             pass
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -66,6 +78,7 @@ def test_release_transacted(engine):
     del tr
     yield from conn.close()
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_cannot_acquire_after_closing(make_engine):
@@ -74,6 +87,7 @@ def test_cannot_acquire_after_closing(make_engine):
     with pytest.raises(RuntimeError):
         yield from engine.acquire()
     yield from engine.wait_closed()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -107,6 +121,7 @@ def test_wait_closed(make_engine, loop):
     )
     assert ['release', 'release', 'wait_closed'] == ops
     assert 0 == engine.freesize
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine

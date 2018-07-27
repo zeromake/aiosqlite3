@@ -1,6 +1,9 @@
 import pytest
-pytest.importorskip("aiosqlite3.sa")
 from aiosqlite3.sa.connection import _distill_params
+
+
+pytest.importorskip("aiosqlite3.sa")
+
 
 def test_distill_none():
     assert _distill_params(None, None) == []

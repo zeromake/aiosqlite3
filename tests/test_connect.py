@@ -5,7 +5,8 @@ import asyncio
 import pytest
 
 import aiosqlite3
-from tests.utils import PY_35
+# from tests.utils import PY_35
+
 
 def test_connect(loop, conn):
     """
@@ -19,17 +20,20 @@ def test_connect(loop, conn):
     assert conn.row_factory is None
     assert conn.text_factory is str
 
+
 def test_connect_setter(conn):
     """
     测试connect的setter
     """
+
     def dict_factory(cursor, row):
         d = {}
         for idx, col in enumerate(cursor.description):
             d[col[0]] = row[idx]
         return d
+
     def unicode_str(x):
-        return unicode(x, "utf-8", "ignore")
+        return x.decode("utf-8", "ignore")
 
     assert not conn.autocommit
     conn.isolation_level = None
@@ -42,20 +46,27 @@ def test_connect_setter(conn):
     conn.text_factory = unicode_str
     assert conn.text_factory is unicode_str
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_connect_sync_setter(db):
     """
     测试connect的setter
     """
-    conn = yield from aiosqlite3.connect(database=db, echo=True, check_same_thread=True)
+    conn = yield from aiosqlite3.connect(
+        database=db,
+        echo=True,
+        check_same_thread=True
+    )
+
     def dict_factory(cursor, row):
         d = {}
         for idx, col in enumerate(cursor.description):
             d[col[0]] = row[idx]
         return d
+
     def unicode_str(x):
-        return unicode(x, "utf-8", "ignore")
+        return x.decode("utf-8", "ignore")
 
     assert not conn.autocommit
     conn.isolation_level = None
@@ -69,17 +80,19 @@ def test_connect_sync_setter(db):
     assert conn.text_factory is unicode_str
     yield from conn.close()
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_connect_del(db, loop):
     @asyncio.coroutine
     def test():
-        conn = yield from aiosqlite3.connect(
+        yield from aiosqlite3.connect(
             ':memory:',
             loop=loop,
             check_same_thread=True
         )
     yield from test()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -93,6 +106,7 @@ def test_connect_execute(conn):
     (resp,) = yield from cursor.fetchone()
     yield from cursor.close()
     assert resp == 10
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -110,7 +124,10 @@ def test_connect_executemany(conn):
                         )'''
     yield from conn.execute(create_table_sql)
     yield from conn.commit()
-    yield from conn.executemany('insert into student(id, name) values(?,?)', char_generator())
+    yield from conn.executemany(
+        'insert into student(id, name) values(?,?)',
+        char_generator()
+    )
     yield from conn.commit()
     cursor = yield from conn.execute('SELECT * FROM student')
     assert cursor.rowcount == -1
@@ -121,6 +138,7 @@ def test_connect_executemany(conn):
         resp = yield from cursor.fetchone()
         index += 1
     assert index == 3
+
 
 @pytest.mark.asyncio
 async def test_connect_executescript(db):
@@ -162,6 +180,7 @@ def test_basic_corsor(conn):
     yield from cursor.close()
     assert resp == 10
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_default_loop(loop, db):
@@ -184,6 +203,7 @@ def test_close_twice(conn):
     yield from conn.close()
     yield from conn.close()
     assert conn.closed
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -223,6 +243,7 @@ def test_rollback(conn):
     yield from conn.commit()
     yield from conn.close()
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_custom_executor(loop, db, executor):
@@ -234,6 +255,7 @@ def test_custom_executor(loop, db, executor):
     assert resp == 10
     assert conn.closed
 
+
 @pytest.mark.asyncio
 async def test_connect_context_manager(loop, db):
     """
@@ -243,12 +265,17 @@ async def test_connect_context_manager(loop, db):
         assert not conn.closed
     assert conn.closed
 
+
 @pytest.mark.asyncio
 async def test_connect_check_same_thread(loop, db):
     """
     测试同步
     """
-    async with aiosqlite3.connect(db, loop=loop, check_same_thread=True) as conn:
+    async with aiosqlite3.connect(
+        db,
+        loop=loop,
+        check_same_thread=True
+    ) as conn:
         async with conn.cursor() as cursor:
             await cursor.execute('SELECT 42;')
             res = await cursor.fetchone()
@@ -259,6 +286,7 @@ async def test_connect_check_same_thread(loop, db):
     assert conn._thread is None
     with pytest.raises(TypeError):
         cursor = await conn.execute('SELECT 42;')
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine

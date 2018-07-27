@@ -3,13 +3,14 @@ import aiosqlite3
 from aiosqlite3 import Cursor
 from unittest import mock
 import pytest
-import logging
+# import logging
 
-sa = pytest.importorskip("aiosqlite3.sa")
 
 from sqlalchemy import MetaData, Table, Column, Integer, String
 from sqlalchemy.schema import DropTable, CreateTable
-from sqlalchemy.sql.ddl import DDLElement
+# from sqlalchemy.sql.ddl import DDLElement
+
+sa = pytest.importorskip("aiosqlite3.sa")
 
 meta = MetaData()
 tbl = Table(
@@ -26,6 +27,8 @@ tbl = Table(
         String(255)
     )
 )
+
+
 @asyncio.coroutine
 def async_res_list(cursor):
     res = []
@@ -39,6 +42,7 @@ def async_res_list(cursor):
         res.append(data)
         index += 1
     return res
+
 
 @pytest.yield_fixture
 def connect(make_conn):
@@ -64,6 +68,7 @@ def connect(make_conn):
         return sa.SAConnection(conn, engine)
     yield go
 
+
 @pytest.yield_fixture()
 def create_pool(loop, db):
     pool = None
@@ -79,6 +84,7 @@ def create_pool(loop, db):
 
     if pool is not None:
         pool.terminate()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -107,6 +113,7 @@ def test_execute_text_select(connect):
     assert row['name'] == 'first'
     assert row.name == 'first'
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_execute_sa_select(connect):
@@ -127,6 +134,7 @@ def test_execute_sa_select(connect):
     assert row[1] == 'first'
     assert row['name'] == 'first'
     assert row.name == 'first'
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -153,9 +161,10 @@ def test_execute_sa_insert_with_tuple(connect):
     assert (1, 'first') == rows[0]
     assert (2, 'second') == rows[1]
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
-def test_execute_sa_insert_with_dict(connect):
+def test_execute_sa_insert_with_dict2(connect):
     conn = yield from connect()
     yield from conn.execute(tbl.insert(), {"id": 2, "name": "second"})
 
@@ -165,9 +174,10 @@ def test_execute_sa_insert_with_dict(connect):
     assert (1, 'first') == rows[0]
     assert (2, 'second') == rows[1]
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
-def test_execute_sa_insert_with_tuple(connect):
+def test_execute_sa_insert_with_tuple2(connect):
     conn = yield from connect()
     yield from conn.execute(tbl.insert(), (2, "second"))
 
@@ -176,6 +186,7 @@ def test_execute_sa_insert_with_tuple(connect):
     assert 2 == len(rows)
     assert (1, 'first') == rows[0]
     assert (2, 'second') == rows[1]
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -188,6 +199,7 @@ def test_execute_sa_insert_named_params(connect):
     assert 2 == len(rows)
     assert (1, 'first') == rows[0]
     assert (2, 'second') == rows[1]
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -218,6 +230,7 @@ def test_scalar_None(connect):
     res = yield from conn.scalar(tbl.select())
     assert res is None
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_row_proxy(connect):
@@ -241,6 +254,7 @@ def test_row_proxy(connect):
     assert not (row2 != row)
     assert 5 != row
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_insert(connect):
@@ -251,8 +265,9 @@ def test_insert(connect):
     assert 1 == res.rowcount
     assert not res.returns_rows
     with pytest.raises(sa.exc.ResourceClosedError):
-        rows = yield from async_res_list(res)
-    
+        yield from async_res_list(res)
+
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_raw_insert(connect):
@@ -283,6 +298,7 @@ def test_raw_insert_with_params(connect):
     rows = yield from async_res_list(res)
     assert 2 == len(rows)
     assert 2 == rows[1].id
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -317,6 +333,7 @@ def test_raw_insert_with_named_params(connect):
     assert 2 == len(rows)
     assert 2 == rows[1].id
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_raw_insert_with_executemany(connect):
@@ -326,6 +343,7 @@ def test_raw_insert_with_executemany(connect):
         "INSERT INTO sa_tbl (id, name) VALUES (:id, :name)",
         [(2, 'third'), (3, 'forth')]
     )
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -337,6 +355,7 @@ def test_delete(connect):
     assert not res.returns_rows
     assert res.closed
     assert res.cursor is None
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -364,6 +383,7 @@ def test_fetchall(connect):
     assert res.returns_rows
     assert [(1, 'first') == (2, 'second')], rows
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_fetchall_closed(connect):
@@ -375,6 +395,7 @@ def test_fetchall_closed(connect):
     with pytest.raises(sa.ResourceClosedError):
         yield from res.fetchall()
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_fetchall_not_returns_rows(connect):
@@ -382,6 +403,7 @@ def test_fetchall_not_returns_rows(connect):
     res = yield from conn.execute(tbl.delete())
     with pytest.raises(sa.ResourceClosedError):
         yield from res.fetchall()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -393,6 +415,7 @@ def test_fetchone_closed(connect):
     yield from res.close()
     with pytest.raises(sa.ResourceClosedError):
         yield from res.fetchone()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -415,6 +438,7 @@ def test_fetchmany(connect):
     assert not res.closed
     assert res.returns_rows
     assert [(1, 'first')] == rows
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -440,6 +464,7 @@ def test_fetchmany_closed(connect):
     yield from res.close()
     with pytest.raises(sa.ResourceClosedError):
         yield from res.fetchmany()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -489,6 +514,8 @@ async def test_sa_connection_context(make_engine):
         async with conn.execute("SELECT 42") as res:
             async for row in res:
                 assert row == (42,)
+
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_sa_connection_parameters(connect):

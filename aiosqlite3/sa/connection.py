@@ -32,8 +32,7 @@ class SAConnection:
         self._dialect = engine.dialect
 
     def execute(self, query, *multiparams, **params):
-        """
-        Executes a SQL query with optional parameters.
+        """Executes a SQL query with optional parameters
 
         query - a SQL query string or any sqlalchemy expression.
 
@@ -67,7 +66,6 @@ class SAConnection:
 
         Returns ResultProxy instance with results of SQL query
         execution.
-
         """
         coro = self._execute(query, *multiparams, **params)
         return _SAConnectionContextManager(coro)
@@ -143,14 +141,19 @@ class SAConnection:
             # raise exc.ArgumentError("aiosqlite3 doesn't support executemany")
         elif dp:
             dp = dp[0]
-    
+
         result_map = None
         if isinstance(query, str):
             yield from cursor.execute(query, dp)
         elif isinstance(query, ClauseElement):
             compiled = query.compile(dialect=self._dialect)
             if not isinstance(query, DDLElement):
-                params = self._base_params(query, dp, compiled, isinstance(query, UpdateBase))
+                params = self._base_params(
+                    query,
+                    dp,
+                    compiled,
+                    isinstance(query, UpdateBase)
+                )
                 result_map = compiled._result_columns
             else:
                 if dp:

@@ -3,7 +3,7 @@
 代理游标
 """
 import asyncio
-from .log import logger
+from .log import LOGGER as logger
 from .utils import (
     delegate_to_executor,
     proxy_property_directly,

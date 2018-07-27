@@ -1,8 +1,8 @@
 import asyncio
 import pytest
 
-import aiosqlite3
-from tests.utils import PY_35
+# import aiosqlite3
+# from tests.utils import PY_35
 from sqlite3 import Connection, Cursor
 
 
@@ -22,6 +22,7 @@ def test_cursor(loop, conn, cursor):
     assert cursor.lastrowid is None
     assert cursor.description is None
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_fetchone(cursor):
@@ -31,6 +32,7 @@ def test_fetchone(cursor):
     yield from cursor.execute('SELECT 42;')
     res = yield from cursor.fetchone()
     assert res == (42,)
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -47,7 +49,10 @@ def test_cursor_executemany(cursor):
                             PRIMARY KEY (`id`)
                         )'''
     yield from cursor.execute(create_table_sql)
-    yield from cursor.executemany('insert into student(id, name) values(?,?)', char_generator())
+    yield from cursor.executemany(
+        'insert into student(id, name) values(?,?)',
+        char_generator()
+    )
     yield from cursor.execute('SELECT * FROM student')
     assert cursor.rowcount == -1
     resp = yield from cursor.fetchone()
@@ -57,6 +62,7 @@ def test_cursor_executemany(cursor):
         resp = yield from cursor.fetchone()
         index += 1
     assert index == 3
+
 
 @pytest.mark.asyncio
 async def test_cursor_executescript(cursor):

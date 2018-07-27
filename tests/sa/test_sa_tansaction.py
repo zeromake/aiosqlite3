@@ -1,11 +1,12 @@
 import asyncio
 import tempfile
-from unittest import mock
 import pytest
-sa = pytest.importorskip("aiosqlite3.sa")
 
+from unittest import mock
 from sqlalchemy import MetaData, Table, Column, Integer, String
 
+
+sa = pytest.importorskip("aiosqlite3.sa")
 meta = MetaData()
 tbl = Table(
     'sa_tbl2',
@@ -19,6 +20,7 @@ tbl = Table(
     Column('name', String(255))
 )
 db = tempfile.mktemp('.db')
+
 
 @pytest.yield_fixture
 def sa_connect(make_conn):
@@ -41,6 +43,7 @@ def sa_connect(make_conn):
         engine.dialect = sa.engine._dialect
         return sa.SAConnection(conn, engine)
     yield go
+
 
 @pytest.yield_fixture
 def xa_connect(sa_connect):
@@ -65,12 +68,14 @@ def test_without_transactions(sa_connect):
     res2 = yield from conn1.scalar(tbl.count())
     assert 0 == res2
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_connection_attr(sa_connect):
     conn = yield from sa_connect()
     tr = yield from conn.begin()
     assert tr.connection is conn
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -112,6 +117,7 @@ def test_root_transaction_rollback(sa_connect):
     res2 = yield from conn2.scalar(tbl.count())
     assert 1 == res2
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_root_transaction_close(sa_connect):
@@ -143,6 +149,7 @@ def test_root_transaction_commit_inactive(sa_connect):
     with pytest.raises(sa.InvalidRequestError):
         yield from tr.commit()
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_root_transaction_rollback_inactive(sa_connect):
@@ -165,6 +172,7 @@ def test_root_transaction_double_close(sa_connect):
     assert not tr.is_active
     yield from tr.close()
     assert not tr.is_active
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -201,6 +209,7 @@ def test_rollback_on_connection_close(sa_connect):
     assert 1 == res2
     del tr
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_inner_transaction_rollback(sa_connect):
@@ -236,6 +245,7 @@ def test_inner_transaction_close(sa_connect):
     res = yield from conn.scalar(tbl.count())
     assert 2 == res
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_nested_transaction_commit(sa_connect):
@@ -260,6 +270,7 @@ def test_nested_transaction_commit(sa_connect):
     res = yield from conn.scalar(tbl.count())
     assert 2 == res
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_nested_transaction_commit_twice(sa_connect):
@@ -280,6 +291,7 @@ def test_nested_transaction_commit_twice(sa_connect):
     assert 2 == res
 
     yield from tr1.close()
+
 
 @pytest.mark.asyncio
 @asyncio.coroutine
@@ -305,6 +317,7 @@ def test_nested_transaction_rollback(sa_connect):
     res = yield from conn.scalar(tbl.count())
     assert 1 == res
 
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_nested_transaction_rollback_twice(sa_connect):
@@ -324,6 +337,7 @@ def test_nested_transaction_rollback_twice(sa_connect):
     yield from tr1.commit()
     res = yield from conn.scalar(tbl.count())
     assert 1 == res
+
 
 @pytest.mark.asyncio
 async def test_transaction_context(sa_connect):
