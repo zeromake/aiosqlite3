@@ -47,7 +47,7 @@ EXTRAS_REQUIRE = {'sa': ['sqlalchemy>=0.9']}
 setup(
     name='aiosqlite3',
     version=find_version('aiosqlite3', '__init__.py'),
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     url='https://github.com/zeromake/aiosqlite3',
     license='MIT',
     author='zeromake',
